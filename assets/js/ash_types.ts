@@ -3,14 +3,70 @@
 
 
 
+export type UUID = string;
+
+// tweets Schema
+export type tweetsResourceSchema = {
+  __type: "Resource";
+  __primitiveFields: "id" | "content" | "userId" | "state";
+  id: UUID;
+  content: string;
+  userId: UUID;
+  state: "posted" | "drafted";
+};
 
 
 
+export type tweetsAttributesOnlySchema = {
+  __type: "Resource";
+  __primitiveFields: "id" | "content" | "userId" | "state";
+  id: UUID;
+  content: string;
+  userId: UUID;
+  state: "posted" | "drafted";
+};
+
+
+export type tweetsFilterInput = {
+  and?: Array<tweetsFilterInput>;
+  or?: Array<tweetsFilterInput>;
+  not?: Array<tweetsFilterInput>;
+
+  id?: {
+    eq?: UUID;
+    notEq?: UUID;
+    in?: Array<UUID>;
+  };
+
+  content?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+  };
+
+  userId?: {
+    eq?: UUID;
+    notEq?: UUID;
+    in?: Array<UUID>;
+  };
+
+  state?: {
+    eq?: "posted" | "drafted";
+    notEq?: "posted" | "drafted";
+    in?: Array<"posted" | "drafted">;
+  };
 
 
 
+};
 
 
+export const tweetsFilterFields = ["id", "content", "userId", "state", "user"] as const;
+export type tweetsFilterField = (typeof tweetsFilterFields)[number];
+
+
+export const tweetsSortFields = ["id", "content", "userId", "state"] as const;
+export type tweetsSortField = (typeof tweetsSortFields)[number];
 
 
 // Utility Types

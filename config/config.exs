@@ -90,7 +90,7 @@ config :spark,
 config :mixer,
   ecto_repos: [Mixer.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Mixer.Accounts],
+  ash_domains: [Mixer.Accounts, Mixer.Posts],
   ash_authentication: [return_error_on_invalid_magic_link_token?: true]
 
 # Configure the endpoint
