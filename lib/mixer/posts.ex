@@ -9,6 +9,7 @@ defmodule Mixer.Posts do
 
   resources do
     resource Mixer.Posts.Tweet
+    resource Mixer.Posts.Media
   end
 
   typescript_rpc do

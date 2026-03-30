@@ -43,6 +43,12 @@ defmodule Mixer.Posts.Tweet do
       public? true
     end
 
+    attribute :likes, :integer do
+      allow_nil? false
+      default 0
+      public? true
+    end
+
     attribute :user_id, :uuid do
       allow_nil? false
       public? true
@@ -54,6 +60,10 @@ defmodule Mixer.Posts.Tweet do
       attribute_type :uuid
       attribute_writable? true
       allow_nil? false
+      public? true
+    end
+
+    has_many :s3_key, Mixer.Posts.Media do
       public? true
     end
   end
