@@ -42,8 +42,8 @@ defmodule Mixer.Posts.Tweet do
             Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
               Mixer.Posts.Media
               |> Ash.get!(media_id, authorize?: false)
-              |> Ash.Changeset.for_update(:link_to_tweet, %{tweet_id: tweet.id})
-              |> Ash.update!(actor: context.actor)
+              |> Ash.Changeset.for_update(:link_to_tweet, %{tweet_id: tweet.id}, actor: context.actor)
+              |> Ash.update!()
 
               {:ok, tweet}
             end)

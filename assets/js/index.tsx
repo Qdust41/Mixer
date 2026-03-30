@@ -75,6 +75,7 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mediaId, setMediaId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -100,6 +101,10 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
       setMediaId(null);
       setPendingFile(null);
       setUploadError(null);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
       onSuccess?.();
     },
     onError: (e: Error) => setError(e.message),
@@ -110,7 +115,11 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
     if (!file) return;
     // Reset the input so the same file can be re-selected after removal
     e.target.value = "";
+    // Revoke any previous object URL to avoid memory leaks
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const localUrl = URL.createObjectURL(file);
     setPendingFile(file);
+    setPreviewUrl(localUrl);
     setMediaId(null);
     setUploadError(null);
     setUploading(true);
@@ -120,13 +129,17 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
     if ("error" in result) {
       setUploadError(result.error);
       setPendingFile(null);
+      URL.revokeObjectURL(localUrl);
+      setPreviewUrl(null);
     } else {
       setMediaId(result.mediaId);
     }
   }
 
   function removeAttachment() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPendingFile(null);
+    setPreviewUrl(null);
     setMediaId(null);
     setUploadError(null);
   }
@@ -173,6 +186,47 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
           rows={2}
           maxLength={MAX + 1}
         />
+        {previewUrl && pendingFile && (
+          <div style={{ position: "relative", marginTop: "0.5rem", display: "inline-block" }}>
+            {/\.(mp4|mov)$/i.test(pendingFile.name) ? (
+              <video
+                src={previewUrl}
+                controls
+                style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "0.5rem", display: "block" }}
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt="attachment preview"
+                style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "0.5rem", display: "block" }}
+              />
+            )}
+            {uploading && (
+              <div style={{
+                position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
+                borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", fontSize: "0.75rem"
+              }}>
+                Uploading…
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={removeAttachment}
+              style={{
+                position: "absolute", top: "4px", right: "4px",
+                background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%",
+                width: "20px", height: "20px", cursor: "pointer",
+                color: "#fff", fontSize: "12px", lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}
+              title="Remove attachment"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {uploadError && <p className="mx-compose-error">{uploadError}</p>}
         {error && <p className="mx-compose-error">{error}</p>}
         <div className="mx-compose-footer">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -195,23 +249,9 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
               onChange={handleFileChange}
             />
             {uploading && (
-              <span style={{ fontSize: "0.75rem", color: "var(--mx-muted)" }}>Uploading…</span>
-            )}
-            {pendingFile && !uploading && (
-              <span style={{ fontSize: "0.75rem", color: "var(--mx-muted)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {pendingFile.name}
-                <button
-                  type="button"
-                  onClick={removeAttachment}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", color: "inherit" }}
-                  title="Remove attachment"
-                >
-                  ×
-                </button>
+              <span style={{ fontSize: "0.75rem", color: "var(--mx-muted)" }}>
+                {pendingFile?.name}
               </span>
-            )}
-            {uploadError && (
-              <span style={{ fontSize: "0.75rem", color: "#ef4444" }}>{uploadError}</span>
             )}
           </div>
           <div className="mx-compose-actions">
