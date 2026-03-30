@@ -436,6 +436,7 @@ export async function validateReadTweet(
 
 export type UpdateTweetInput = {
   content?: string;
+  likes?: number;
   userId?: UUID;
   state?: "posted" | "drafted";
 };
