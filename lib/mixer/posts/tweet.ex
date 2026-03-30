@@ -30,8 +30,25 @@ defmodule Mixer.Posts.Tweet do
     create :create do
       upsert? true
       accept [:content]
+      argument :media_id, :uuid, allow_nil?: true
       change relate_actor(:user)
       change transition_state(:posted)
+      change fn changeset, context ->
+        case Ash.Changeset.get_argument(changeset, :media_id) do
+          nil ->
+            changeset
+
+          media_id ->
+            Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
+              Mixer.Posts.Media
+              |> Ash.get!(media_id, authorize?: false)
+              |> Ash.Changeset.for_update(:link_to_tweet, %{tweet_id: tweet.id})
+              |> Ash.update!(actor: context.actor)
+
+              {:ok, tweet}
+            end)
+        end
+      end
     end
   end
 
@@ -63,7 +80,7 @@ defmodule Mixer.Posts.Tweet do
       public? true
     end
 
-    has_many :s3_key, Mixer.Posts.Media do
+    has_many :media, Mixer.Posts.Media do
       public? true
     end
   end

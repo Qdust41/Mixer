@@ -19,5 +19,9 @@ defmodule Mixer.Posts do
       rpc_action :update_tweet, :update
       rpc_action :destroy_tweet, :destroy
     end
+
+    resource Mixer.Posts.Media do
+      rpc_action :read_media, :read
+    end
   end
 end

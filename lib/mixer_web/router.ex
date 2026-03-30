@@ -41,6 +41,7 @@ defmodule MixerWeb.Router do
     get "/feed", PageController, :index
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
+    post "/upload", UploadController, :create
     auth_routes AuthController, Mixer.Accounts.User, path: "/auth"
     sign_out_route AuthController
 

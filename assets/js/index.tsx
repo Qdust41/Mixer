@@ -14,6 +14,7 @@ import {
   updateTweet,
   buildCSRFHeaders,
 } from "./ash_rpc";
+import { uploadFile } from "./upload";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000 } },
@@ -21,7 +22,8 @@ const queryClient = new QueryClient({
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tweet = { id: string; content: string; userId: string; state: string };
+type MediaItem = { id: string; s3Key: string };
+type Tweet = { id: string; content: string; userId: string; state: string; media?: MediaItem[] };
 
 // ── Auth context ───────────────────────────────────────────────────────────────
 
@@ -31,6 +33,11 @@ const AuthCtx = createContext({ email: "", userId: "" });
 
 function timeAgo(): string {
   return "just now";
+}
+
+function getAssetHost(): string {
+  const appEl = document.getElementById("app");
+  return appEl?.dataset.assetHost ?? "http://localhost:3901";
 }
 
 // ── Components ─────────────────────────────────────────────────────────────────
@@ -67,14 +74,19 @@ function CharCount({ current, max }: { current: number; max: number }) {
 function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [mediaId, setMediaId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
   const MAX = 280;
 
   const mutation = useMutation({
     mutationFn: async (content: string) => {
       const res = await createTweet({
-        input: { content },
+        input: { content, mediaId: mediaId ?? undefined },
         fields: ["id", "content", "userId", "state"],
         headers: buildCSRFHeaders(),
       });
@@ -85,10 +97,39 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
       qc.invalidateQueries({ queryKey: ["tweets"] });
       setText("");
       setError(null);
+      setMediaId(null);
+      setPendingFile(null);
+      setUploadError(null);
       onSuccess?.();
     },
     onError: (e: Error) => setError(e.message),
   });
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset the input so the same file can be re-selected after removal
+    e.target.value = "";
+    setPendingFile(file);
+    setMediaId(null);
+    setUploadError(null);
+    setUploading(true);
+    const csrfToken = buildCSRFHeaders()["X-CSRF-Token"] as string;
+    const result = await uploadFile(file, csrfToken);
+    setUploading(false);
+    if ("error" in result) {
+      setUploadError(result.error);
+      setPendingFile(null);
+    } else {
+      setMediaId(result.mediaId);
+    }
+  }
+
+  function removeAttachment() {
+    setPendingFile(null);
+    setMediaId(null);
+    setUploadError(null);
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -134,19 +175,82 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
         />
         {error && <p className="mx-compose-error">{error}</p>}
         <div className="mx-compose-footer">
-          <span className="mx-compose-hint">⌘↵ to post</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="mx-action-btn"
+              title="Attach image or video"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || mutation.isPending}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+              </svg>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/mp4,video/quicktime"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            {uploading && (
+              <span style={{ fontSize: "0.75rem", color: "var(--mx-muted)" }}>Uploading…</span>
+            )}
+            {pendingFile && !uploading && (
+              <span style={{ fontSize: "0.75rem", color: "var(--mx-muted)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                {pendingFile.name}
+                <button
+                  type="button"
+                  onClick={removeAttachment}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", color: "inherit" }}
+                  title="Remove attachment"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {uploadError && (
+              <span style={{ fontSize: "0.75rem", color: "#ef4444" }}>{uploadError}</span>
+            )}
+          </div>
           <div className="mx-compose-actions">
             <CharCount current={text.length} max={MAX} />
             <button
               className="mx-btn-post"
               onClick={submit}
-              disabled={!text.trim() || mutation.isPending}
+              disabled={!text.trim() || mutation.isPending || uploading}
             >
               {mutation.isPending ? "Posting…" : "Post"}
             </button>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TweetMedia({ media }: { media: MediaItem[] }) {
+  const assetHost = getAssetHost();
+  return (
+    <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      {media.map((m) =>
+        /\.(mp4|mov)$/i.test(m.s3Key) ? (
+          <video
+            key={m.id}
+            src={`${assetHost}/${m.s3Key}`}
+            controls
+            style={{ maxWidth: "100%", borderRadius: "0.5rem" }}
+          />
+        ) : (
+          <img
+            key={m.id}
+            src={`${assetHost}/${m.s3Key}`}
+            alt=""
+            style={{ maxWidth: "100%", borderRadius: "0.5rem", display: "block" }}
+          />
+        )
+      )}
     </div>
   );
 }
@@ -283,6 +387,10 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
           <p className="mx-tweet-text">{tweet.content}</p>
         )}
 
+        {tweet.media && tweet.media.length > 0 && (
+          <TweetMedia media={tweet.media} />
+        )}
+
         {error && !editing && <p className="mx-compose-error">{error}</p>}
       </div>
     </article>
@@ -294,7 +402,7 @@ function Feed() {
     queryKey: ["tweets"],
     queryFn: async () => {
       const res = await readTweet({
-        fields: ["id", "content", "userId", "state"],
+        fields: ["id", "content", "userId", "state", { media: ["id", "s3Key"] }],
         sort: "-id",
         headers: buildCSRFHeaders(),
       });
