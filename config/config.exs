@@ -7,6 +7,14 @@
 # General application configuration
 import Config
 
+config :waffle,
+  storage: Waffle.Storage.S3,
+  bucket: "mixer-bucket",
+  asset_host: "http://localhost:3901"
+
+config :ex_aws,
+  json_codec: Jason
+
 config :ash_typescript,
   output_file: "assets/js/ash_rpc.ts",
   run_endpoint: "/rpc/run",
