@@ -16,7 +16,7 @@ defmodule Mixer.Posts.Tweet do
   end
 
   state_machine do
-    initial_states [:drafted]
+    initial_states [:drafted, :posted]
     default_initial_state :drafted
 
     transitions do
@@ -55,6 +55,20 @@ defmodule Mixer.Posts.Tweet do
       attribute_writable? true
       allow_nil? false
       public? true
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action_type(:create) do
+      authorize_if actor_present()
+    end
+
+    policy action_type([:destroy, :update]) do
+      authorize_if relates_to_actor_via(:user)
     end
   end
 end

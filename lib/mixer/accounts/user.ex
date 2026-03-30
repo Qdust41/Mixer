@@ -303,6 +303,8 @@ defmodule Mixer.Accounts.User do
     has_many :valid_api_keys, Mixer.Accounts.ApiKey do
       filter expr(valid)
     end
+
+    has_many :tweets, Mixer.Posts.Tweet
   end
 
   identities do

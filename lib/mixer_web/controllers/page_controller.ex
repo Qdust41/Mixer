@@ -5,7 +5,9 @@ defmodule MixerWeb.PageController do
     render(conn, :home)
   end
 
-  def index conn, _params do
-    conn |> put_root_layout(html: {MixerWeb.Layouts, :spa_root}) |> render(:index)
+  def index(conn, _params) do
+    conn
+    |> put_root_layout(html: {MixerWeb.Layouts, :spa_root})
+    |> render(:index, current_user: conn.assigns[:current_user])
   end
 end
