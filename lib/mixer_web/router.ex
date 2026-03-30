@@ -37,49 +37,10 @@ defmodule MixerWeb.Router do
   scope "/", MixerWeb do
     pipe_through :browser
 
-    ash_authentication_live_session :authenticated_routes do
-      # in each liveview, add one of the following at the top of the module:
-      #
-      # If an authenticated user must be present:
-      # on_mount {MixerWeb.LiveUserAuth, :live_user_required}
-      #
-      # If an authenticated user *may* be present:
-      # on_mount {MixerWeb.LiveUserAuth, :live_user_optional}
-      #
-      # If an authenticated user must *not* be present:
-      # on_mount {MixerWeb.LiveUserAuth, :live_no_user}
-    end
-
+    get "/", PageController, :home
+    get "/feed", PageController, :index
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
-    get "/ash-typescript", PageController, :index
-  end
-
-  scope "/api/json" do
-    pipe_through [:api]
-
-    forward "/swaggerui", OpenApiSpex.Plug.SwaggerUI,
-      path: "/api/json/open_api",
-      default_model_expand_depth: 4
-
-    forward "/", MixerWeb.AshJsonApiRouter
-  end
-
-  scope "/gql" do
-    pipe_through [:graphql]
-
-    forward "/playground", Absinthe.Plug.GraphiQL,
-      schema: Module.concat(["MixerWeb.GraphqlSchema"]),
-      socket: Module.concat(["MixerWeb.GraphqlSocket"]),
-      interface: :simple
-
-    forward "/", Absinthe.Plug, schema: Module.concat(["MixerWeb.GraphqlSchema"])
-  end
-
-  scope "/", MixerWeb do
-    pipe_through :browser
-
-    get "/", PageController, :home
     auth_routes AuthController, Mixer.Accounts.User, path: "/auth"
     sign_out_route AuthController
 
@@ -110,12 +71,41 @@ defmodule MixerWeb.Router do
       auth_routes_prefix: "/auth",
       overrides: [MixerWeb.AuthOverrides, Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI]
     )
+
+    ash_authentication_live_session :authenticated_routes do
+      # in each liveview, add one of the following at the top of the module:
+      #
+      # If an authenticated user must be present:
+      # on_mount {MixerWeb.LiveUserAuth, :live_user_required}
+      #
+      # If an authenticated user *may* be present:
+      # on_mount {MixerWeb.LiveUserAuth, :live_user_optional}
+      #
+      # If an authenticated user must *not* be present:
+      # on_mount {MixerWeb.LiveUserAuth, :live_no_user}
+    end
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", MixerWeb do
-  #   pipe_through :api
-  # end
+  scope "/api/json" do
+    pipe_through [:api]
+
+    forward "/swaggerui", OpenApiSpex.Plug.SwaggerUI,
+      path: "/api/json/open_api",
+      default_model_expand_depth: 4
+
+    forward "/", MixerWeb.AshJsonApiRouter
+  end
+
+  scope "/gql" do
+    pipe_through [:graphql]
+
+    forward "/playground", Absinthe.Plug.GraphiQL,
+      schema: Module.concat(["MixerWeb.GraphqlSchema"]),
+      socket: Module.concat(["MixerWeb.GraphqlSocket"]),
+      interface: :simple
+
+    forward "/", Absinthe.Plug, schema: Module.concat(["MixerWeb.GraphqlSchema"])
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:mixer, :dev_routes) do
