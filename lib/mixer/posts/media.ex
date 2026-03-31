@@ -11,6 +11,10 @@ defmodule Mixer.Posts.Media do
   postgres do
     table "media"
     repo Mixer.Repo
+
+    references do
+      reference :tweet, on_delete: :delete
+    end
   end
 
   typescript do

@@ -10,7 +10,7 @@ defmodule Mixer.Posts.MediaUploader do
     if ext in @extensions, do: :ok, else: {:error, "unsupported file type #{ext}"}
   end
 
-  def storage_dir(_version, {_file, scope}), do: "uploads/media/#{scope.id}"
+  def storage_dir(_version, {_file, scope}), do: "uploads/media/#{scope.user_id}/#{scope.media_id}"
 
   def filename(_version, {file, _scope}) do
     Path.basename(file.file_name, Path.extname(file.file_name))

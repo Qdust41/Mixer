@@ -8,6 +8,10 @@ defmodule Mixer.Posts.TweetLike do
   postgres do
     table "tweet_likes"
     repo Mixer.Repo
+
+    references do
+      reference :tweet, on_delete: :delete
+    end
   end
 
   actions do

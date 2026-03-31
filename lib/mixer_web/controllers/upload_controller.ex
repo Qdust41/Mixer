@@ -11,15 +11,17 @@ defmodule MixerWeb.UploadController do
       |> put_status(:unauthorized)
       |> json(%{error: "authentication required"})
     else
-      scope = %{id: Ash.UUID.generate()}
+      media_id = Ash.UUID.generate()
+      scope = %{user_id: actor.id, media_id: media_id}
 
       case MediaUploader.store({upload, scope}) do
         {:ok, file_name} ->
-          s3_key = "uploads/media/#{scope.id}/#{file_name}"
+          s3_key = "uploads/media/#{scope.user_id}/#{scope.media_id}/#{file_name}"
           url = MediaUploader.url({file_name, scope})
 
           Mixer.Posts.Media
           |> Ash.Changeset.for_create(:upload, %{s3_key: s3_key}, actor: actor)
+          |> Ash.Changeset.force_change_attribute(:id, media_id)
           |> Ash.create()
           |> case do
             {:ok, media} ->
