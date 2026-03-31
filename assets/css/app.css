@@ -127,8 +127,8 @@ html, body {
 [data-theme=dark] {
   --mx-fg2: #9090a8;
   --mx-muted: #5a5a72;
-  --mx-border: #1e1e26;
-  --mx-border2: #2a2a36;
+  --mx-border: oklch(22% 0.010 270);
+  --mx-border2: oklch(30% 0.012 270);
 }
 
 [data-theme=light] {
@@ -169,7 +169,7 @@ html, body {
   padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--mx-border);
+  border-right: 1px solid color-mix(in oklch, var(--color-base-content) 18%, transparent);
 }
 
 .mx-logo {
@@ -204,13 +204,23 @@ html, body {
   border-radius: var(--mx-radius-sm);
   text-decoration: none;
   color: var(--mx-fg2);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
-  transition: color 0.15s, background 0.15s;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.mx-nav-item:hover { color: var(--mx-fg); background: var(--mx-surface2); }
-.mx-nav-active { color: var(--mx-fg) !important; }
+.mx-nav-item:hover {
+  color: var(--mx-fg);
+  background: var(--mx-surface2);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.mx-nav-active {
+  color: var(--mx-fg) !important;
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent) !important;
+  box-shadow: inset 3px 0 0 var(--color-primary) !important;
+}
 
 .mx-sidebar-footer {
   margin-top: auto;
@@ -236,7 +246,7 @@ html, body {
 
 /* ── Main ── */
 .mx-main {
-  border-right: 1px solid var(--mx-border);
+  border-right: 1px solid color-mix(in oklch, var(--color-base-content) 18%, transparent);
   min-height: 100vh;
 }
 
@@ -277,10 +287,10 @@ html, body {
 }
 .mx-refresh-btn:hover { color: var(--mx-fg); border-color: var(--mx-accent); }
 
-.mx-divider { height: 1px; background: var(--mx-border); }
+.mx-divider { height: 1px; background: color-mix(in oklch, var(--color-base-content) 18%, transparent); }
 
 /* ── Compose ── */
-.mx-compose-wrapper { padding: 1rem 1.25rem; border-bottom: 1px solid var(--mx-border); }
+.mx-compose-wrapper { padding: 1rem 1.25rem; }
 
 .mx-compose {
   display: flex;
@@ -311,7 +321,7 @@ html, body {
   outline: none;
   color: var(--mx-fg);
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   resize: none;
   overflow: hidden;
   line-height: 1.55;
@@ -360,16 +370,20 @@ html, body {
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
   font-family: inherit;
   text-decoration: none;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-primary) 60%, transparent);
 }
-.mx-btn-post:hover, .mx-btn-save:hover { background: var(--mx-accent2); }
+.mx-btn-post:hover, .mx-btn-save:hover {
+  background: var(--mx-accent2);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-accent) 80%, transparent);
+}
 .mx-btn-post:disabled, .mx-btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .mx-btn-cancel {
   background: none;
-  border: 1px solid var(--mx-border2);
+  border: 1px solid var(--mx-fg2);
   color: var(--mx-fg2);
   border-radius: 99px;
   padding: 0.375rem 0.875rem;
@@ -380,16 +394,26 @@ html, body {
 }
 .mx-btn-cancel:hover { color: var(--mx-fg); border-color: var(--mx-fg2); }
 
+/* ── Feed ── */
+.mx-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
 /* ── Tweet Card ── */
 .mx-tweet {
   display: flex;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--mx-border);
-  transition: background 0.1s;
+  border: 1px solid var(--mx-border);
+  border-radius: var(--mx-radius);
+  background: var(--mx-surface);
+  transition: background 0.1s, border-color 0.1s;
   animation: mx-fade-in 0.2s ease;
 }
-.mx-tweet:hover { background: color-mix(in oklch, var(--mx-fg) 2%, transparent); }
+.mx-tweet:hover { background: var(--mx-surface2); border-color: var(--mx-border2); }
 
 @keyframes mx-fade-in {
   from { opacity: 0; transform: translateY(4px); }
@@ -406,7 +430,7 @@ html, body {
 }
 
 .mx-tweet-handle {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--mx-fg);
 }
@@ -420,7 +444,7 @@ html, body {
   margin-left: auto;
   display: flex;
   gap: 0.125rem;
-  opacity: 0;
+  opacity: 0.25;
   transition: opacity 0.15s;
 }
 .mx-tweet:hover .mx-tweet-actions { opacity: 1; }
@@ -443,7 +467,7 @@ html, body {
 .mx-action-confirm { color: var(--mx-red) !important; background: color-mix(in oklch, var(--mx-red) 15%, transparent) !important; }
 
 .mx-tweet-text {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.6;
   color: var(--mx-fg);
   white-space: pre-wrap;
