@@ -13,7 +13,7 @@ defmodule Mixer.Posts.MediaUploader do
   def storage_dir(_version, {_file, scope}), do: "uploads/media/#{scope.id}"
 
   def filename(_version, {file, _scope}) do
-    Path.basename(file.file_name)
+    Path.basename(file.file_name, Path.extname(file.file_name))
   end
 
   def s3_object_headers(_version, {file, _scope}) do

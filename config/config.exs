@@ -10,7 +10,7 @@ import Config
 config :waffle,
   storage: Waffle.Storage.S3,
   bucket: "mixer-bucket",
-  asset_host: "http://localhost:3900"
+  asset_host: "http://localhost:9000"
 
 config :ex_aws,
   json_codec: Jason

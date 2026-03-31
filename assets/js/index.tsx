@@ -37,7 +37,7 @@ function timeAgo(): string {
 
 function getAssetHost(): string {
   const appEl = document.getElementById("app");
-  return appEl?.dataset.assetHost ?? "http://localhost:3901";
+  return appEl?.dataset.assetHost ?? "http://localhost:9000";
 }
 
 // ── Components ─────────────────────────────────────────────────────────────────

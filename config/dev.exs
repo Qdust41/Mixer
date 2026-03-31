@@ -92,15 +92,13 @@ config :phoenix_live_view,
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# Local S3-compatible storage (MinIO or similar at localhost:3901)
-# Adjust access_key_id / secret_access_key to match your local server's credentials
+# Local S3-compatible storage (MinIO at localhost:9000)
 config :ex_aws,
-  access_key_id: "GKdea8f62997a90ffa664135d2",
-  secret_access_key: "dd2f1757661a9e68cae6928a2fc950a2b2fd03b229d71038c98d4713b40ebba2",
-  region: "garage"
+  access_key_id: "minioadmin",
+  secret_access_key: "minioadmin"
 
 config :ex_aws, :s3,
   scheme: "http://",
   host: "localhost",
-  port: 3900,
-  region: "garage"
+  port: 9000,
+  virtual_host: false
