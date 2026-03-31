@@ -11,6 +11,8 @@ import {
   createTweet,
   readTweet,
   destroyTweet,
+  likeTweet,
+  unlikeTweet,
   updateTweet,
   buildCSRFHeaders,
 } from "./ash_rpc";
@@ -23,7 +25,15 @@ const queryClient = new QueryClient({
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type MediaItem = { id: string; s3Key: string };
-type Tweet = { id: string; content: string; userId: string; state: string; media?: MediaItem[] };
+type Tweet = {
+  id: string;
+  content: string;
+  likes: number;
+  likedByMe?: boolean;
+  userId: string;
+  state: string;
+  media?: MediaItem[];
+};
 
 // ── Auth context ───────────────────────────────────────────────────────────────
 
@@ -298,6 +308,7 @@ function TweetMedia({ media }: { media: MediaItem[] }) {
 function TweetCard({ tweet }: { tweet: Tweet }) {
   const { userId: currentUserId } = useContext(AuthCtx);
   const canModify = !!currentUserId && tweet.userId === currentUserId;
+  const canLike = !!currentUserId;
 
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(tweet.content);
@@ -330,6 +341,23 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tweets"] });
       setEditing(false);
+      setError(null);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      const action = tweet.likedByMe ? unlikeTweet : likeTweet;
+      const res = await action({
+        identity: tweet.id,
+        fields: ["id", "likes", "likedByMe"],
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error(res.errors?.[0]?.message ?? "Failed to update like");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tweets"] });
       setError(null);
     },
     onError: (e: Error) => setError(e.message),
@@ -431,6 +459,26 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
           <TweetMedia media={tweet.media} />
         )}
 
+        <div className="mx-tweet-footer">
+          <button
+            className={`mx-like-btn${tweet.likedByMe ? " mx-like-btn-active" : ""}`}
+            onClick={() => likeMutation.mutate()}
+            disabled={!canLike || likeMutation.isPending}
+            title={
+              canLike
+                ? tweet.likedByMe
+                  ? "Remove like"
+                  : "Like post"
+                : "Sign in to like posts"
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.1 21.35 10.55 19.93C5.4 15.27 2 12.19 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.69-3.4 6.77-8.55 11.44z" />
+            </svg>
+            <span>{tweet.likes}</span>
+          </button>
+        </div>
+
         {error && !editing && <p className="mx-compose-error">{error}</p>}
       </div>
     </article>
@@ -442,7 +490,7 @@ function Feed() {
     queryKey: ["tweets"],
     queryFn: async () => {
       const res = await readTweet({
-        fields: ["id", "content", "userId", "state", { media: ["id", "s3Key"] }],
+        fields: ["id", "content", "likes", "likedByMe", "userId", "state", { media: ["id", "s3Key"] }],
         sort: "-id",
         headers: buildCSRFHeaders(),
       });

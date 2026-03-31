@@ -304,6 +304,8 @@ defmodule Mixer.Accounts.User do
       filter expr(valid)
     end
 
+    has_many :tweet_likes, Mixer.Posts.TweetLike
+
     has_many :tweets, Mixer.Posts.Tweet
   end
 

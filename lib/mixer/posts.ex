@@ -9,13 +9,16 @@ defmodule Mixer.Posts do
 
   resources do
     resource Mixer.Posts.Tweet
+    resource Mixer.Posts.TweetLike
     resource Mixer.Posts.Media
   end
 
   typescript_rpc do
     resource Mixer.Posts.Tweet do
       rpc_action :create_tweet, :create
+      rpc_action :like_tweet, :like
       rpc_action :read_tweet, :read
+      rpc_action :unlike_tweet, :unlike
       rpc_action :update_tweet, :update
       rpc_action :destroy_tweet, :destroy
     end

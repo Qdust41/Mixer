@@ -435,6 +435,74 @@ export async function validateDestroyTweet(
 }
 
 
+export type LikeTweetFields = UnifiedFieldSelection<tweetsResourceSchema>[];
+
+export type InferLikeTweetResult<
+  Fields extends LikeTweetFields | undefined,
+> = InferResult<tweetsResourceSchema, Fields>;
+
+export type LikeTweetResult<Fields extends LikeTweetFields | undefined = undefined> = | { success: true; data: InferLikeTweetResult<Fields>; }
+| { success: false; errors: AshRpcError[]; }
+
+;
+
+/**
+ * Update an existing Tweet
+ *
+ * @ashActionType :update
+ */
+export async function likeTweet<Fields extends LikeTweetFields | undefined = undefined>(
+  config: {
+  tenant?: string;
+  identity: UUID;
+  fields?: Fields;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<LikeTweetResult<Fields extends undefined ? [] : Fields>> {
+  const payload = {
+    action: "like_tweet",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    identity: config.identity,
+    ...(config.fields !== undefined && { fields: config.fields })
+  };
+
+  return executeActionRpcRequest<LikeTweetResult<Fields extends undefined ? [] : Fields>>(
+    payload,
+    config
+  );
+}
+
+
+/**
+ * Validate: Update an existing Tweet
+ *
+ * @ashActionType :update
+ * @validation true
+ */
+export async function validateLikeTweet(
+  config: {
+  tenant?: string;
+  identity: UUID | string;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ValidationResult> {
+  const payload = {
+    action: "like_tweet",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    identity: config.identity
+  };
+
+  return executeValidationRpcRequest<ValidationResult>(
+    payload,
+    config
+  );
+}
+
+
 export type ReadTweetFields = UnifiedFieldSelection<tweetsResourceSchema>[];
 
 
@@ -536,11 +604,76 @@ export async function validateReadTweet(
 }
 
 
+export type UnlikeTweetFields = UnifiedFieldSelection<tweetsResourceSchema>[];
+
+export type InferUnlikeTweetResult<
+  Fields extends UnlikeTweetFields | undefined,
+> = InferResult<tweetsResourceSchema, Fields>;
+
+export type UnlikeTweetResult<Fields extends UnlikeTweetFields | undefined = undefined> = | { success: true; data: InferUnlikeTweetResult<Fields>; }
+| { success: false; errors: AshRpcError[]; }
+
+;
+
+/**
+ * Update an existing Tweet
+ *
+ * @ashActionType :update
+ */
+export async function unlikeTweet<Fields extends UnlikeTweetFields | undefined = undefined>(
+  config: {
+  tenant?: string;
+  identity: UUID;
+  fields?: Fields;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<UnlikeTweetResult<Fields extends undefined ? [] : Fields>> {
+  const payload = {
+    action: "unlike_tweet",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    identity: config.identity,
+    ...(config.fields !== undefined && { fields: config.fields })
+  };
+
+  return executeActionRpcRequest<UnlikeTweetResult<Fields extends undefined ? [] : Fields>>(
+    payload,
+    config
+  );
+}
+
+
+/**
+ * Validate: Update an existing Tweet
+ *
+ * @ashActionType :update
+ * @validation true
+ */
+export async function validateUnlikeTweet(
+  config: {
+  tenant?: string;
+  identity: UUID | string;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ValidationResult> {
+  const payload = {
+    action: "unlike_tweet",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    identity: config.identity
+  };
+
+  return executeValidationRpcRequest<ValidationResult>(
+    payload,
+    config
+  );
+}
+
+
 export type UpdateTweetInput = {
   content?: string;
-  likes?: number;
-  userId?: UUID;
-  state?: "posted" | "drafted";
 };
 
 export type UpdateTweetFields = UnifiedFieldSelection<tweetsResourceSchema>[];
