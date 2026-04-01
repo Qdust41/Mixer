@@ -4,6 +4,7 @@
 
 
 export type UUID = string;
+export type UtcDateTimeUsec = string;
 
 // media Schema
 export type mediaResourceSchema = {
@@ -31,13 +32,15 @@ export type mediaAttributesOnlySchema = {
 // tweets Schema
 export type tweetsResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "content" | "likes" | "userId" | "state" | "likedByMe";
+  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "likedByMe" | "userEmail";
   id: UUID;
   content: string;
   likes: number;
   userId: UUID;
+  insertedAt: UtcDateTimeUsec;
   state: "posted" | "drafted";
   likedByMe: boolean;
+  userEmail: string | null;
   media: { __type: "Relationship"; __array: true; __resource: mediaResourceSchema; };
 };
 
@@ -45,11 +48,12 @@ export type tweetsResourceSchema = {
 
 export type tweetsAttributesOnlySchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "content" | "likes" | "userId" | "state";
+  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state";
   id: UUID;
   content: string;
   likes: number;
   userId: UUID;
+  insertedAt: UtcDateTimeUsec;
   state: "posted" | "drafted";
 };
 
@@ -121,10 +125,27 @@ export type tweetsFilterInput = {
     in?: Array<UUID>;
   };
 
+  insertedAt?: {
+    eq?: UtcDateTimeUsec;
+    notEq?: UtcDateTimeUsec;
+    greaterThan?: UtcDateTimeUsec;
+    greaterThanOrEqual?: UtcDateTimeUsec;
+    lessThan?: UtcDateTimeUsec;
+    lessThanOrEqual?: UtcDateTimeUsec;
+    in?: Array<UtcDateTimeUsec>;
+  };
+
   state?: {
     eq?: "posted" | "drafted";
     notEq?: "posted" | "drafted";
     in?: Array<"posted" | "drafted">;
+  };
+
+  userEmail?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
   };
 
   likedByMe?: {
@@ -141,14 +162,14 @@ export type tweetsFilterInput = {
 export const mediaFilterFields = ["id", "s3Key", "userId", "tweetId", "user", "tweet"] as const;
 export type mediaFilterField = (typeof mediaFilterFields)[number];
 
-export const tweetsFilterFields = ["id", "content", "likes", "userId", "state", "likedByMe", "user", "media"] as const;
+export const tweetsFilterFields = ["id", "content", "likes", "userId", "insertedAt", "state", "userEmail", "likedByMe", "user", "media"] as const;
 export type tweetsFilterField = (typeof tweetsFilterFields)[number];
 
 
 export const mediaSortFields = ["id", "s3Key", "userId", "tweetId"] as const;
 export type mediaSortField = (typeof mediaSortFields)[number];
 
-export const tweetsSortFields = ["id", "content", "likes", "userId", "state", "likedByMe"] as const;
+export const tweetsSortFields = ["id", "content", "likes", "userId", "insertedAt", "state", "userEmail", "likedByMe"] as const;
 export type tweetsSortField = (typeof tweetsSortFields)[number];
 
 

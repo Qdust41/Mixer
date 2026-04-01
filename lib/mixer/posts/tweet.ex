@@ -129,6 +129,12 @@ defmodule Mixer.Posts.Tweet do
       allow_nil? false
       public? true
     end
+
+    create_timestamp :inserted_at do
+      public? true
+    end
+
+    update_timestamp :updated_at
   end
 
   relationships do
@@ -144,6 +150,12 @@ defmodule Mixer.Posts.Tweet do
     end
 
     has_many :tweet_likes, Mixer.Posts.TweetLike
+  end
+
+  calculations do
+    calculate :user_email, :string, expr(user.email) do
+      public? true
+    end
   end
 
   aggregates do

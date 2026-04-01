@@ -33,6 +33,8 @@ type Tweet = {
   userId: string;
   state: string;
   media?: MediaItem[];
+  userEmail?: string | null;
+  insertedAt?: string | null;
 };
 
 // ── Auth context ───────────────────────────────────────────────────────────────
@@ -376,7 +378,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
       </div>
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
-          <span className="mx-tweet-handle">@mixer</span>
+          <span className="mx-tweet-handle">{tweet.userEmail ?? "@mixer"}</span>
           <span className="mx-tweet-dot">·</span>
           <span className="mx-tweet-time">{timeAgo()}</span>
           {canModify && (
@@ -490,8 +492,8 @@ function Feed() {
     queryKey: ["tweets"],
     queryFn: async () => {
       const res = await readTweet({
-        fields: ["id", "content", "likes", "likedByMe", "userId", "state", { media: ["id", "s3Key"] }],
-        sort: "-id",
+        fields: ["id", "content", "likes", "likedByMe", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        sort: "-insertedAt",
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load tweets");
