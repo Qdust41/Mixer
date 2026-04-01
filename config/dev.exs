@@ -102,3 +102,7 @@ config :ex_aws, :s3,
   host: "localhost",
   port: 9000,
   virtual_host: false
+
+config :waffle,
+  bucket: "mixer-bucket",
+  asset_host: "http://localhost:9000"

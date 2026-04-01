@@ -72,6 +72,31 @@ if config_env() == :prod do
       System.get_env("TOKEN_SIGNING_SECRET") ||
         raise("Missing environment variable `TOKEN_SIGNING_SECRET`!")
 
+  # Configure S3-compatible storage (MinIO/Garege/AWS S3)
+  config :ex_aws,
+    access_key_id:
+      System.get_env("S3_ACCESS_KEY_ID") ||
+        raise("Missing environment variable `S3_ACCESS_KEY_ID`!"),
+    secret_access_key:
+      System.get_env("S3_SECRET_ACCESS_KEY") ||
+        raise("Missing environment variable `S3_SECRET_ACCESS_KEY`!")
+
+  config :ex_aws, :s3,
+    scheme: System.get_env("S3_SCHEME", "https://"),
+    host:
+      System.get_env("S3_HOST") ||
+        raise("Missing environment variable `S3_HOST`!"),
+    port: String.to_integer(System.get_env("S3_PORT", "80")),
+    virtual_host: System.get_env("S3_VIRTUAL_HOST", "false") == "true"
+
+  config :waffle,
+    bucket:
+      System.get_env("S3_BUCKET") ||
+        raise("Missing environment variable `S3_BUCKET`!"),
+    asset_host:
+      System.get_env("S3_ASSET_HOST") ||
+        raise("Missing environment variable `S3_ASSET_HOST`!")
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
