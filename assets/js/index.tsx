@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { createPortal } from "react-dom";
 import {
   QueryClient,
   QueryClientProvider,
@@ -372,7 +373,11 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
   }
 
   return (
-    <article className="mx-tweet">
+    <article
+      className="mx-tweet"
+      style={{ cursor: "pointer" }}
+      onClick={() => { window.location.href = `/feed/${tweet.id}`; }}
+    >
       <div className="mx-tweet-avatar">
         <span>M</span>
       </div>
@@ -386,7 +391,8 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
               <button
                 className="mx-action-btn"
                 title="Edit"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setEditText(tweet.content);
                   setEditing(true);
                   setConfirmDelete(false);
@@ -399,7 +405,8 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
               <button
                 className={`mx-action-btn mx-action-delete${confirmDelete ? " mx-action-confirm" : ""}`}
                 title={confirmDelete ? "Confirm delete" : "Delete"}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (!confirmDelete) {
                     setConfirmDelete(true);
                     setTimeout(() => setConfirmDelete(false), 3000);
@@ -464,7 +471,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
         <div className="mx-tweet-footer">
           <button
             className={`mx-like-btn${tweet.likedByMe ? " mx-like-btn-active" : ""}`}
-            onClick={() => likeMutation.mutate()}
+            onClick={(e) => { e.stopPropagation(); likeMutation.mutate(); }}
             disabled={!canLike || likeMutation.isPending}
             title={
               canLike
@@ -484,6 +491,215 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
         {error && !editing && <p className="mx-compose-error">{error}</p>}
       </div>
     </article>
+  );
+}
+
+function MediaLightbox({ item, onClose }: { item: MediaItem; onClose: () => void }) {
+  const assetHost = getAssetHost();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="mx-lightbox" onClick={onClose}>
+      <button className="mx-lightbox-close" onClick={onClose}>✕</button>
+      <div className="mx-lightbox-content" onClick={(e) => e.stopPropagation()}>
+        {/\.(mp4|mov)$/i.test(item.s3Key) ? (
+          <video src={`${assetHost}/${item.s3Key}`} controls autoPlay className="mx-lightbox-media" />
+        ) : (
+          <img src={`${assetHost}/${item.s3Key}`} alt="" className="mx-lightbox-media" />
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function TweetDetail({ tweetId }: { tweetId: string }) {
+  const { userId: currentUserId } = useContext(AuthCtx);
+  const [lightboxItem, setLightboxItem] = useState<MediaItem | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const assetHost = getAssetHost();
+
+  const { data: tweet, isLoading, isError } = useQuery({
+    queryKey: ["tweet", tweetId],
+    queryFn: async () => {
+      const res = await readTweet({
+        fields: ["id", "content", "likes", "likedByMe", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        filter: { id: { eq: tweetId } },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load tweet");
+      const results = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
+      return (results[0] as Tweet) ?? null;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await destroyTweet({ identity: tweetId, headers: buildCSRFHeaders() });
+      if (!res.success) throw new Error(res.errors?.[0]?.message ?? "Failed to delete");
+    },
+    onSuccess: () => { window.location.href = "/feed"; },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const res = await updateTweet({
+        identity: tweetId,
+        input: { content },
+        fields: ["id", "content", "userId", "state"],
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error(res.errors?.[0]?.message ?? "Failed to update");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tweet", tweetId] });
+      setEditing(false);
+      setError(null);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      if (!tweet) return;
+      const action = tweet.likedByMe ? unlikeTweet : likeTweet;
+      const res = await action({ identity: tweetId, fields: ["id", "likes", "likedByMe"], headers: buildCSRFHeaders() });
+      if (!res.success) throw new Error(res.errors?.[0]?.message ?? "Failed to update like");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tweet", tweetId] }),
+    onError: (e: Error) => setError(e.message),
+  });
+
+  if (isLoading) return <Spinner />;
+  if (isError || !tweet) return <ErrorBanner message="Could not load tweet" />;
+
+  const canModify = !!currentUserId && tweet.userId === currentUserId;
+  const canLike = !!currentUserId;
+
+  return (
+    <div className="mx-detail">
+      <div className="mx-detail-header">
+        <a href="/feed" className="mx-back-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+          </svg>
+          Back
+        </a>
+        {canModify && (
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              className="mx-action-btn"
+              title="Edit"
+              onClick={() => { setEditText(tweet.content); setEditing(true); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.04a1 1 0 0 0 0-1.41l-2.31-2.31a1 1 0 0 0-1.41 0l-1.79 1.79 3.75 3.75 1.76-1.82z" />
+              </svg>
+            </button>
+            <button
+              className={`mx-action-btn mx-action-delete${confirmDelete ? " mx-action-confirm" : ""}`}
+              title={confirmDelete ? "Confirm delete" : "Delete"}
+              onClick={() => {
+                if (!confirmDelete) {
+                  setConfirmDelete(true);
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                } else {
+                  deleteMutation.mutate();
+                }
+              }}
+            >
+              {deleteMutation.isPending ? (
+                <span style={{ fontSize: "0.65rem" }}>…</span>
+              ) : confirmDelete ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mx-detail-body">
+        <div className="mx-detail-author">
+          <div className="mx-tweet-avatar">
+            <span>M</span>
+          </div>
+          <span className="mx-tweet-handle">{tweet.userEmail ?? "@mixer"}</span>
+        </div>
+
+        {editing ? (
+          <div className="mx-edit-area">
+            <textarea
+              className="mx-edit-textarea"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              autoFocus
+              rows={4}
+            />
+            {error && <p className="mx-compose-error">{error}</p>}
+            <div className="mx-edit-footer">
+              <button className="mx-btn-cancel" onClick={() => { setEditing(false); setError(null); }}>Cancel</button>
+              <button
+                className="mx-btn-save"
+                onClick={() => { const t = editText.trim(); if (t) updateMutation.mutate(t); }}
+                disabled={!editText.trim() || updateMutation.isPending}
+              >
+                {updateMutation.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mx-detail-content">{tweet.content}</p>
+        )}
+
+        {tweet.media && tweet.media.length > 0 && (
+          <div className="mx-detail-media">
+            {tweet.media.map((m) => (
+              <button key={m.id} className="mx-media-thumb" onClick={() => setLightboxItem(m)}>
+                {/\.(mp4|mov)$/i.test(m.s3Key) ? (
+                  <video src={`${assetHost}/${m.s3Key}`} />
+                ) : (
+                  <img src={`${assetHost}/${m.s3Key}`} alt="" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mx-tweet-footer" style={{ marginTop: "1rem" }}>
+          <button
+            className={`mx-like-btn${tweet.likedByMe ? " mx-like-btn-active" : ""}`}
+            onClick={() => likeMutation.mutate()}
+            disabled={!canLike || likeMutation.isPending}
+            title={canLike ? (tweet.likedByMe ? "Remove like" : "Like post") : "Sign in to like posts"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.1 21.35 10.55 19.93C5.4 15.27 2 12.19 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.69-3.4 6.77-8.55 11.44z" />
+            </svg>
+            <span>{tweet.likes}</span>
+          </button>
+        </div>
+
+        {error && !editing && <p className="mx-compose-error">{error}</p>}
+      </div>
+
+      {lightboxItem && <MediaLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />}
+    </div>
   );
 }
 
@@ -560,6 +776,7 @@ function App() {
   const appEl = document.getElementById("app")!;
   const email = appEl.dataset.currentUserEmail ?? "";
   const userId = appEl.dataset.currentUserId ?? "";
+  const tweetId = appEl.dataset.tweetId || null;
 
   return (
     <AuthCtx.Provider value={{ email, userId }}>
@@ -571,7 +788,7 @@ function App() {
               <span className="mx-logo-text">Mixer</span>
             </div>
             <nav className="mx-nav">
-              <a className="mx-nav-item mx-nav-active" href="#">
+              <a className="mx-nav-item mx-nav-active" href="/feed">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                 </svg>
@@ -595,25 +812,36 @@ function App() {
           </aside>
 
           <main className="mx-main">
-            <header className="mx-header">
-              <h1 className="mx-header-title">Feed</h1>
-              <RefreshButton />
-            </header>
+            {tweetId ? (
+              <>
+                <header className="mx-header">
+                  <h1 className="mx-header-title">Tweet</h1>
+                </header>
+                <TweetDetail tweetId={tweetId} />
+              </>
+            ) : (
+              <>
+                <header className="mx-header">
+                  <h1 className="mx-header-title">Feed</h1>
+                  <RefreshButton />
+                </header>
 
-            <div className="mx-compose-wrapper">
-              {email ? (
-                <ComposeTweet />
-              ) : (
-                <div className="mx-signin-cta">
-                  <p>Sign in to start mixing.</p>
-                  <a className="mx-btn-post" href="/register">Sign in</a>
+                <div className="mx-compose-wrapper">
+                  {email ? (
+                    <ComposeTweet />
+                  ) : (
+                    <div className="mx-signin-cta">
+                      <p>Sign in to start mixing.</p>
+                      <a className="mx-btn-post" href="/register">Sign in</a>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="mx-divider" />
+                <div className="mx-divider" />
 
-            <Feed />
+                <Feed />
+              </>
+            )}
           </main>
 
           <div className="mx-rightbar">

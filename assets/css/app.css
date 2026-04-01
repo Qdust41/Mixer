@@ -621,3 +621,116 @@ html, body {
   border: 1px solid var(--mx-border2);
   color: var(--mx-accent2);
 }
+
+/* ── Tweet Detail Page ── */
+.mx-detail {
+  padding: 1rem 1.5rem;
+}
+
+.mx-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.mx-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--mx-fg2);
+  font-size: 0.85rem;
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--mx-radius-sm);
+  border: 1px solid var(--mx-border);
+  transition: background 0.15s;
+}
+.mx-back-btn:hover { background: var(--mx-surface2); }
+
+.mx-detail-author {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.mx-detail-body {
+  padding: 0.5rem 0;
+}
+
+.mx-detail-content {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--mx-fg);
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mx-detail-media {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Clickable media thumb (used in detail view) ── */
+.mx-media-thumb {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--mx-radius-sm);
+  overflow: hidden;
+  display: block;
+  width: 100%;
+}
+.mx-media-thumb img,
+.mx-media-thumb video {
+  width: 100%;
+  border-radius: var(--mx-radius-sm);
+  display: block;
+}
+.mx-media-thumb:hover { opacity: 0.85; }
+
+/* ── Media Lightbox ── */
+.mx-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mx-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mx-lightbox-close:hover { background: rgba(255, 255, 255, 0.2); }
+
+.mx-lightbox-content {
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.mx-lightbox-media {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: var(--mx-radius-sm);
+  display: block;
+}
