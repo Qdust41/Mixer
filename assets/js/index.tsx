@@ -15,6 +15,7 @@ import {
   likeTweet,
   unlikeTweet,
   updateTweet,
+  readUser,
   buildCSRFHeaders,
 } from "./ash_rpc";
 import { uploadFile } from "./upload";
@@ -25,6 +26,7 @@ const queryClient = new QueryClient({
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+type User = { id: string; email: string };
 type MediaItem = { id: string; s3Key: string };
 type Tweet = {
   id: string;
@@ -772,11 +774,169 @@ function RefreshButton() {
   );
 }
 
+function UserCard({ user }: { user: User }) {
+  return (
+    <article
+      className="mx-tweet"
+      style={{ cursor: "pointer" }}
+      onClick={() => { window.location.href = `/users/${user.id}`; }}
+    >
+      <div className="mx-tweet-avatar">
+        <span>M</span>
+      </div>
+      <div className="mx-tweet-body">
+        <div className="mx-tweet-header">
+          <span className="mx-tweet-handle">{user.email}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function UserList() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await readUser({
+        fields: ["id", "email"],
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load users");
+      const users = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
+      return users as User[];
+    },
+  });
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <ErrorBanner message={(error as Error)?.message ?? "Could not load users"} />;
+
+  const users = data ?? [];
+
+  if (users.length === 0) {
+    return (
+      <div className="mx-empty">
+        <div className="mx-empty-icon">◎</div>
+        <p className="mx-empty-title">No users yet</p>
+        <p className="mx-empty-sub">Be the first to sign up.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-feed">
+      {users.map((u) => (
+        <UserCard key={u.id} user={u} />
+      ))}
+    </div>
+  );
+}
+
+function UserDetail({ userId }: { userId: string }) {
+  const { data: user, isLoading, isError } = useQuery({
+    queryKey: ["user", userId],
+    queryFn: async () => {
+      const res = await readUser({
+        fields: ["id", "email"],
+        filter: { id: { eq: userId } },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load user");
+      const results = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
+      return (results[0] as User) ?? null;
+    },
+  });
+
+  if (isLoading) return <Spinner />;
+  if (isError || !user) return <ErrorBanner message="Could not load user" />;
+
+  return (
+    <div className="mx-detail">
+      <div className="mx-detail-header">
+        <a href="/users" className="mx-back-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+          </svg>
+          Back
+        </a>
+      </div>
+      <div className="mx-detail-body">
+        <div className="mx-detail-author">
+          <div className="mx-tweet-avatar">
+            <span>M</span>
+          </div>
+          <span className="mx-tweet-handle">{user.email}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const appEl = document.getElementById("app")!;
   const email = appEl.dataset.currentUserEmail ?? "";
   const userId = appEl.dataset.currentUserId ?? "";
   const tweetId = appEl.dataset.tweetId || null;
+  const page = appEl.dataset.page ?? "feed";
+  const profileUserId = appEl.dataset.userId || null;
+
+  const onFeedPage = page === "feed" || page === "tweet";
+  const onUsersPage = page === "users" || page === "user-detail";
+
+  function renderMain() {
+    switch (page) {
+      case "tweet":
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">Tweet</h1>
+            </header>
+            <TweetDetail tweetId={tweetId!} />
+          </>
+        );
+      case "users":
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">Users</h1>
+            </header>
+            <UserList />
+          </>
+        );
+      case "user-detail":
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">Profile</h1>
+            </header>
+            <UserDetail userId={profileUserId!} />
+          </>
+        );
+      default:
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">Feed</h1>
+              <RefreshButton />
+            </header>
+
+            <div className="mx-compose-wrapper">
+              {email ? (
+                <ComposeTweet />
+              ) : (
+                <div className="mx-signin-cta">
+                  <p>Sign in to start mixing.</p>
+                  <a className="mx-btn-post" href="/register">Sign in</a>
+                </div>
+              )}
+            </div>
+
+            <div className="mx-divider" />
+
+            <Feed />
+          </>
+        );
+    }
+  }
 
   return (
     <AuthCtx.Provider value={{ email, userId }}>
@@ -788,11 +948,17 @@ function App() {
               <span className="mx-logo-text">Mixer</span>
             </div>
             <nav className="mx-nav">
-              <a className="mx-nav-item mx-nav-active" href="/feed">
+              <a className={`mx-nav-item${onFeedPage ? " mx-nav-active" : ""}`} href="/feed">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                 </svg>
                 Feed
+              </a>
+              <a className={`mx-nav-item${onUsersPage ? " mx-nav-active" : ""}`} href="/users">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                </svg>
+                Users
               </a>
             </nav>
             <div className="mx-sidebar-footer">
@@ -812,36 +978,7 @@ function App() {
           </aside>
 
           <main className="mx-main">
-            {tweetId ? (
-              <>
-                <header className="mx-header">
-                  <h1 className="mx-header-title">Tweet</h1>
-                </header>
-                <TweetDetail tweetId={tweetId} />
-              </>
-            ) : (
-              <>
-                <header className="mx-header">
-                  <h1 className="mx-header-title">Feed</h1>
-                  <RefreshButton />
-                </header>
-
-                <div className="mx-compose-wrapper">
-                  {email ? (
-                    <ComposeTweet />
-                  ) : (
-                    <div className="mx-signin-cta">
-                      <p>Sign in to start mixing.</p>
-                      <a className="mx-btn-post" href="/register">Sign in</a>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mx-divider" />
-
-                <Feed />
-              </>
-            )}
+            {renderMain()}
           </main>
 
           <div className="mx-rightbar">

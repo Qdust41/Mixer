@@ -4,7 +4,7 @@ defmodule Mixer.Accounts.User do
     domain: Mixer.Accounts,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshAuthentication]
+    extensions: [AshAuthentication, AshTypescript.Resource]
 
   authentication do
     add_ons do
@@ -64,6 +64,10 @@ defmodule Mixer.Accounts.User do
   postgres do
     table "users"
     repo Mixer.Repo
+  end
+
+  typescript do
+    type_name "users"
   end
 
   actions do
@@ -280,6 +284,10 @@ defmodule Mixer.Accounts.User do
 
   policies do
     bypass AshAuthentication.Checks.AshAuthenticationInteraction do
+      authorize_if always()
+    end
+
+    policy action_type(:read) do
       authorize_if always()
     end
   end
