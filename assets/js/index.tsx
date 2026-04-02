@@ -55,6 +55,75 @@ function getAssetHost(): string {
   return appEl?.dataset.assetHost ?? "http://localhost:9000";
 }
 
+// ── Context menu ──────────────────────────────────────────────────────────────
+
+type ContextMenuItem =
+  | { type: "item"; label: string; onClick: () => void }
+  | { type: "separator" };
+
+function ContextMenu({
+  x,
+  y,
+  items,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  items: ContextMenuItem[];
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const itemCount = items.filter((i) => i.type === "item").length;
+  const sepCount = items.filter((i) => i.type === "separator").length;
+  const menuH = itemCount * 34 + sepCount * 9 + 8;
+  const menuW = 180;
+  const left = Math.min(x, window.innerWidth - menuW - 8);
+  const top = Math.min(y, window.innerHeight - menuH - 8);
+
+  return createPortal(
+    <div
+      ref={ref}
+      className="mx-context-menu"
+      style={{ left, top }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {items.map((item, i) =>
+        item.type === "separator" ? (
+          <div key={i} className="mx-context-menu-separator" />
+        ) : (
+          <button
+            key={i}
+            className="mx-context-menu-item"
+            onClick={() => {
+              item.onClick();
+              onClose();
+            }}
+          >
+            {item.label}
+          </button>
+        )
+      )}
+    </div>,
+    document.body
+  );
+}
+
 // ── Components ─────────────────────────────────────────────────────────────────
 
 function Spinner() {
@@ -319,7 +388,42 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
   const [editText, setEditText] = useState(tweet.content);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const qc = useQueryClient();
+
+  const tweetUrl = `${window.location.origin}/feed/${tweet.id}`;
+
+  const ctxItems: ContextMenuItem[] = canModify
+    ? [
+        {
+          type: "item",
+          label: "Edit",
+          onClick: () => {
+            setEditText(tweet.content);
+            setEditing(true);
+            setConfirmDelete(false);
+          },
+        },
+        { type: "separator" },
+        {
+          type: "item",
+          label: "Share",
+          onClick: () => navigator.clipboard.writeText(tweetUrl),
+        },
+      ]
+    : [
+        {
+          type: "item",
+          label: "View",
+          onClick: () => { window.location.href = tweetUrl; },
+        },
+        { type: "separator" },
+        {
+          type: "item",
+          label: "Share",
+          onClick: () => navigator.clipboard.writeText(tweetUrl),
+        },
+      ];
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -379,6 +483,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
       className="mx-tweet"
       style={{ cursor: "pointer" }}
       onClick={() => { window.location.href = `/feed/${tweet.id}`; }}
+      onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
     >
       <div className="mx-tweet-avatar">
         <span>M</span>
@@ -492,6 +597,14 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
 
         {error && !editing && <p className="mx-compose-error">{error}</p>}
       </div>
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxItems}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </article>
   );
 }
@@ -775,11 +888,24 @@ function RefreshButton() {
 }
 
 function UserCard({ user }: { user: User }) {
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const userUrl = `${window.location.origin}/users/${user.id}`;
+
+  const ctxItems: ContextMenuItem[] = [
+    {
+      type: "item",
+      label: "Share",
+      onClick: () => navigator.clipboard.writeText(userUrl),
+    },
+  ];
+
   return (
     <article
       className="mx-tweet"
       style={{ cursor: "pointer" }}
       onClick={() => { window.location.href = `/users/${user.id}`; }}
+      onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
     >
       <div className="mx-tweet-avatar">
         <span>M</span>
@@ -789,6 +915,14 @@ function UserCard({ user }: { user: User }) {
           <span className="mx-tweet-handle">{user.email}</span>
         </div>
       </div>
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxItems}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </article>
   );
 }
