@@ -1,4 +1,6 @@
 defmodule Mixer.Accounts.User do
+  import Ash.Expr
+
   use Ash.Resource,
     otp_app: :mixer,
     domain: Mixer.Accounts,
@@ -315,6 +317,34 @@ defmodule Mixer.Accounts.User do
     has_many :tweet_likes, Mixer.Posts.TweetLike
 
     has_many :tweets, Mixer.Posts.Tweet
+
+    has_many :followers, Mixer.Accounts.Follow do
+      destination_attribute :following_id
+    end
+
+    has_many :following, Mixer.Accounts.Follow do
+      destination_attribute :follower_id
+    end
+  end
+
+  aggregates do
+    count :follower_count, :followers do
+      public? true
+    end
+
+    count :following_count, :following do
+      public? true
+    end
+
+    exists :am_i_following, :followers do
+      public? true
+      filter expr(follower_id == ^actor(:id))
+    end
+
+    first :my_follow_id, :followers, :id do
+      public? true
+      filter expr(follower_id == ^actor(:id))
+    end
   end
 
   identities do

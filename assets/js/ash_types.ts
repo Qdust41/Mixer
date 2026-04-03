@@ -6,12 +6,32 @@
 export type UUID = string;
 export type UtcDateTimeUsec = string;
 
+// follows Schema
+export type followsResourceSchema = {
+  __type: "Resource";
+  __primitiveFields: "id";
+  id: UUID;
+};
+
+
+
+export type followsAttributesOnlySchema = {
+  __type: "Resource";
+  __primitiveFields: "id";
+  id: UUID;
+};
+
+
 // users Schema
 export type usersResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "email";
+  __primitiveFields: "id" | "email" | "followerCount" | "followingCount" | "amIFollowing" | "myFollowId";
   id: UUID;
   email: string;
+  followerCount: number;
+  followingCount: number;
+  amIFollowing: boolean;
+  myFollowId: UUID;
 };
 
 
@@ -78,6 +98,20 @@ export type tweetsAttributesOnlySchema = {
 };
 
 
+export type followsFilterInput = {
+  and?: Array<followsFilterInput>;
+  or?: Array<followsFilterInput>;
+  not?: Array<followsFilterInput>;
+
+  id?: {
+    eq?: UUID;
+    notEq?: UUID;
+    in?: Array<UUID>;
+  };
+
+
+
+};
 export type usersFilterInput = {
   and?: Array<usersFilterInput>;
   or?: Array<usersFilterInput>;
@@ -95,6 +129,40 @@ export type usersFilterInput = {
     in?: Array<string>;
   };
 
+  followerCount?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+    isNil?: boolean;
+  };
+
+  followingCount?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+    isNil?: boolean;
+  };
+
+  amIFollowing?: {
+    eq?: boolean;
+    notEq?: boolean;
+    isNil?: boolean;
+  };
+
+  myFollowId?: {
+    eq?: UUID;
+    notEq?: UUID;
+    in?: Array<UUID>;
+    isNil?: boolean;
+  };
 
 
 };
@@ -203,7 +271,10 @@ export type tweetsFilterInput = {
 };
 
 
-export const usersFilterFields = ["id", "email"] as const;
+export const followsFilterFields = ["id"] as const;
+export type followsFilterField = (typeof followsFilterFields)[number];
+
+export const usersFilterFields = ["id", "email", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
 export type usersFilterField = (typeof usersFilterFields)[number];
 
 export const mediaFilterFields = ["id", "s3Key", "userId", "tweetId", "user", "tweet"] as const;
@@ -213,7 +284,10 @@ export const tweetsFilterFields = ["id", "content", "likes", "userId", "inserted
 export type tweetsFilterField = (typeof tweetsFilterFields)[number];
 
 
-export const usersSortFields = ["id", "email"] as const;
+export const followsSortFields = ["id"] as const;
+export type followsSortField = (typeof followsSortFields)[number];
+
+export const usersSortFields = ["id", "email", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
 export type usersSortField = (typeof usersSortFields)[number];
 
 export const mediaSortFields = ["id", "s3Key", "userId", "tweetId"] as const;

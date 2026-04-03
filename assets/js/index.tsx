@@ -16,6 +16,8 @@ import {
   unlikeTweet,
   updateTweet,
   readUser,
+  followUser,
+  unfollowUser,
   buildCSRFHeaders,
 } from "./ash_rpc";
 import { uploadFile } from "./upload";
@@ -26,7 +28,14 @@ const queryClient = new QueryClient({
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type User = { id: string; email: string };
+type User = {
+  id: string;
+  email: string;
+  followerCount?: number;
+  followingCount?: number;
+  amIFollowing?: boolean;
+  myFollowId?: string | null;
+};
 type MediaItem = { id: string; s3Key: string };
 type Tweet = {
   id: string;
@@ -887,6 +896,56 @@ function RefreshButton() {
   );
 }
 
+function FollowButton({ targetUserId, amIFollowing }: { targetUserId: string; amIFollowing: boolean }) {
+  const { userId: currentUserId } = useContext(AuthCtx);
+  const qc = useQueryClient();
+
+  const followMutation = useMutation({
+    mutationFn: async () => {
+      const res = await followUser({
+        input: { followingId: targetUserId },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error((res.errors?.[0] as any)?.message ?? "Follow failed");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      qc.invalidateQueries({ queryKey: ["user", targetUserId] });
+    },
+  });
+
+  const unfollowMutation = useMutation({
+    mutationFn: async () => {
+      const res = await unfollowUser({
+        input: { followingId: targetUserId },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error((res.errors?.[0] as any)?.message ?? "Unfollow failed");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      qc.invalidateQueries({ queryKey: ["user", targetUserId] });
+    },
+  });
+
+  if (!currentUserId || currentUserId === targetUserId) return null;
+
+  const isPending = followMutation.isPending || unfollowMutation.isPending;
+
+  return (
+    <button
+      className={`mx-action-btn${amIFollowing ? " mx-action-btn--active" : ""}`}
+      disabled={isPending}
+      onClick={(e) => {
+        e.stopPropagation();
+        amIFollowing ? unfollowMutation.mutate() : followMutation.mutate();
+      }}
+    >
+      {isPending ? "..." : amIFollowing ? "Unfollow" : "Follow"}
+    </button>
+  );
+}
+
 function UserCard({ user }: { user: User }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -913,7 +972,14 @@ function UserCard({ user }: { user: User }) {
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
           <span className="mx-tweet-handle">{user.email}</span>
+          <FollowButton targetUserId={user.id} amIFollowing={user.amIFollowing ?? false} />
         </div>
+        {(user.followerCount !== undefined || user.followingCount !== undefined) && (
+          <div className="mx-tweet-meta" style={{ fontSize: "0.8rem", color: "var(--mx-muted)", marginTop: "4px" }}>
+            <span>{user.followerCount ?? 0} followers</span>
+            <span style={{ marginLeft: "12px" }}>{user.followingCount ?? 0} following</span>
+          </div>
+        )}
       </div>
       {ctxMenu && (
         <ContextMenu
@@ -932,7 +998,7 @@ function UserList() {
     queryKey: ["users"],
     queryFn: async () => {
       const res = await readUser({
-        fields: ["id", "email"],
+        fields: ["id", "email", "followerCount", "followingCount", "amIFollowing"],
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load users");
@@ -970,7 +1036,7 @@ function UserDetail({ userId }: { userId: string }) {
     queryKey: ["user", userId],
     queryFn: async () => {
       const res = await readUser({
-        fields: ["id", "email"],
+        fields: ["id", "email", "followerCount", "followingCount", "amIFollowing"],
         filter: { id: { eq: userId } },
         headers: buildCSRFHeaders(),
       });
@@ -998,7 +1064,16 @@ function UserDetail({ userId }: { userId: string }) {
           <div className="mx-tweet-avatar">
             <span>M</span>
           </div>
-          <span className="mx-tweet-handle">{user.email}</span>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span className="mx-tweet-handle">{user.email}</span>
+              <FollowButton targetUserId={user.id} amIFollowing={user.amIFollowing ?? false} />
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)", marginTop: "6px", display: "flex", gap: "16px" }}>
+              <span><strong>{user.followerCount ?? 0}</strong> followers</span>
+              <span><strong>{user.followingCount ?? 0}</strong> following</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
