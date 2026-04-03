@@ -1186,12 +1186,12 @@ function App() {
               {email ? (
                 <>
                   <span className="mx-version" style={{ color: "var(--mx-fg2)" }}>{email}</span>
-                  <a className="mx-auth-link" href="/auth/sign-out">Sign out</a>
+                  <a className="mx-auth-link" href="/sign-out">Sign out</a>
                 </>
               ) : (
                 <>
                   <a className="mx-auth-link" href="/register">Create account</a>
-                  <a className="mx-auth-link" href="/auth/sign-in">Sign in</a>
+                  <a className="mx-auth-link" href="/sign-in">Sign in</a>
                 </>
               )}
               <span className="mx-version">v0.1.0</span>
