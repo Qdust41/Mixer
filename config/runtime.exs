@@ -52,7 +52,7 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = System.get_env("PHX_HOST") || "mixer.jimweaver.com"
 
   config :mixer, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
@@ -96,6 +96,12 @@ if config_env() == :prod do
     asset_host:
       System.get_env("S3_ASSET_HOST") ||
         raise("Missing environment variable `S3_ASSET_HOST`!")
+
+  config :mixer, Mixer.Mailer,
+    adapter: Swoosh.Adapters.Brevo,
+    api_key:
+      System.get_env("BREVO_API_KEY") ||
+        raise("Missing environment variable `BREVO_API_KEY`!")
 
   # ## SSL Support
   #
