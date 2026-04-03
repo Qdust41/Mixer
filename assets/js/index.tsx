@@ -896,8 +896,7 @@ function RefreshButton() {
   );
 }
 
-function FollowButton({ targetUserId, amIFollowing }: { targetUserId: string; amIFollowing: boolean }) {
-  const { userId: currentUserId } = useContext(AuthCtx);
+function useFollowUser(targetUserId: string) {
   const qc = useQueryClient();
 
   const followMutation = useMutation({
@@ -928,35 +927,42 @@ function FollowButton({ targetUserId, amIFollowing }: { targetUserId: string; am
     },
   });
 
-  if (!currentUserId || currentUserId === targetUserId) return null;
+  return {
+    follow: () => followMutation.mutate(),
+    unfollow: () => unfollowMutation.mutate(),
+    isPending: followMutation.isPending || unfollowMutation.isPending,
+  };
+}
 
-  const isPending = followMutation.isPending || unfollowMutation.isPending;
-
+function FollowButton({ amIFollowing, isPending, onToggle }: { amIFollowing: boolean; isPending: boolean; onToggle: () => void }) {
   return (
     <button
-      className={`mx-action-btn${amIFollowing ? " mx-action-btn--active" : ""}`}
+      className={`mx-follow-btn${amIFollowing ? " mx-follow-btn--following" : ""}`}
       disabled={isPending}
-      onClick={(e) => {
-        e.stopPropagation();
-        amIFollowing ? unfollowMutation.mutate() : followMutation.mutate();
-      }}
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
-      {isPending ? "..." : amIFollowing ? "Unfollow" : "Follow"}
+      {isPending ? "…" : amIFollowing ? "Unfollow" : "Follow"}
     </button>
   );
 }
 
 function UserCard({ user }: { user: User }) {
+  const { userId: currentUserId } = useContext(AuthCtx);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const { follow, unfollow, isPending } = useFollowUser(user.id);
 
   const userUrl = `${window.location.origin}/users/${user.id}`;
+  const canFollow = !!currentUserId && currentUserId !== user.id;
+  const amIFollowing = user.amIFollowing ?? false;
 
   const ctxItems: ContextMenuItem[] = [
-    {
-      type: "item",
-      label: "Share",
-      onClick: () => navigator.clipboard.writeText(userUrl),
-    },
+    { type: "item", label: "Share", onClick: () => navigator.clipboard.writeText(userUrl) },
+    ...(canFollow ? [
+      { type: "separator" as const },
+      amIFollowing
+        ? { type: "item" as const, label: "Unfollow", onClick: unfollow }
+        : { type: "item" as const, label: "Follow", onClick: follow },
+    ] : []),
   ];
 
   return (
@@ -972,7 +978,6 @@ function UserCard({ user }: { user: User }) {
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
           <span className="mx-tweet-handle">{user.email}</span>
-          <FollowButton targetUserId={user.id} amIFollowing={user.amIFollowing ?? false} />
         </div>
         {(user.followerCount !== undefined || user.followingCount !== undefined) && (
           <div className="mx-tweet-meta" style={{ fontSize: "0.8rem", color: "var(--mx-muted)", marginTop: "4px" }}>
@@ -981,13 +986,13 @@ function UserCard({ user }: { user: User }) {
           </div>
         )}
       </div>
+      {canFollow && (
+        <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+          <FollowButton amIFollowing={amIFollowing} isPending={isPending} onToggle={amIFollowing ? unfollow : follow} />
+        </div>
+      )}
       {ctxMenu && (
-        <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          items={ctxItems}
-          onClose={() => setCtxMenu(null)}
-        />
+        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxItems} onClose={() => setCtxMenu(null)} />
       )}
     </article>
   );
@@ -1032,6 +1037,8 @@ function UserList() {
 }
 
 function UserDetail({ userId }: { userId: string }) {
+  const { userId: currentUserId } = useContext(AuthCtx);
+  const { follow, unfollow, isPending } = useFollowUser(userId);
   const { data: user, isLoading, isError } = useQuery({
     queryKey: ["user", userId],
     queryFn: async () => {
@@ -1049,6 +1056,9 @@ function UserDetail({ userId }: { userId: string }) {
   if (isLoading) return <Spinner />;
   if (isError || !user) return <ErrorBanner message="Could not load user" />;
 
+  const canFollow = !!currentUserId && currentUserId !== userId;
+  const amIFollowing = user.amIFollowing ?? false;
+
   return (
     <div className="mx-detail">
       <div className="mx-detail-header">
@@ -1064,10 +1074,12 @@ function UserDetail({ userId }: { userId: string }) {
           <div className="mx-tweet-avatar">
             <span>M</span>
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <span className="mx-tweet-handle">{user.email}</span>
-              <FollowButton targetUserId={user.id} amIFollowing={user.amIFollowing ?? false} />
+              {canFollow && (
+                <FollowButton amIFollowing={amIFollowing} isPending={isPending} onToggle={amIFollowing ? unfollow : follow} />
+              )}
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)", marginTop: "6px", display: "flex", gap: "16px" }}>
               <span><strong>{user.followerCount ?? 0}</strong> followers</span>
