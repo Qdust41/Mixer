@@ -1,5 +1,6 @@
 defmodule Mixer.Accounts.Follow do
   require Ash.Query
+
   use Ash.Resource,
     domain: Mixer.Accounts,
     data_layer: AshPostgres.DataLayer,
@@ -20,25 +21,6 @@ defmodule Mixer.Accounts.Follow do
     type_name "follows"
   end
 
-  attributes do
-    uuid_primary_key :id
-    create_timestamp :created_at
-  end
-
-  relationships do
-    belongs_to :follower, Mixer.Accounts.User do
-      primary_key? true
-      allow_nil? false
-      attribute_writable? true
-    end
-
-    belongs_to :following, Mixer.Accounts.User do
-      primary_key? true
-      allow_nil? false
-      attribute_writable? true
-    end
-  end
-
   actions do
     defaults [:read, :destroy]
 
@@ -48,6 +30,7 @@ defmodule Mixer.Accounts.Follow do
       upsert_identity :unique_follow
       accept [:following_id]
       change relate_actor(:follower)
+
       validate fn changeset, _context ->
         follower_id = Ash.Changeset.get_attribute(changeset, :follower_id)
         following_id = Ash.Changeset.get_attribute(changeset, :following_id)
@@ -82,10 +65,6 @@ defmodule Mixer.Accounts.Follow do
     end
   end
 
-  identities do
-    identity :unique_follow, [:follower_id, :following_id]
-  end
-
   policies do
     policy action_type(:read) do
       authorize_if always()
@@ -98,5 +77,28 @@ defmodule Mixer.Accounts.Follow do
     policy action(:unfollow) do
       authorize_if actor_present()
     end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    create_timestamp :created_at
+  end
+
+  relationships do
+    belongs_to :follower, Mixer.Accounts.User do
+      primary_key? true
+      allow_nil? false
+      attribute_writable? true
+    end
+
+    belongs_to :following, Mixer.Accounts.User do
+      primary_key? true
+      allow_nil? false
+      attribute_writable? true
+    end
+  end
+
+  identities do
+    identity :unique_follow, [:follower_id, :following_id]
   end
 end

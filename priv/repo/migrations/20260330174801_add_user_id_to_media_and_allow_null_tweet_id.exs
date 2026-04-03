@@ -17,7 +17,8 @@ defmodule Mixer.Repo.Migrations.AddUserIdToMediaAndAllowNullTweetId do
             name: "media_user_id_fkey",
             type: :uuid,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
     end
   end
 

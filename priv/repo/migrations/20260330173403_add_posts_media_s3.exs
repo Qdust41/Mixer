@@ -22,7 +22,8 @@ defmodule Mixer.Repo.Migrations.AddPostsMediaS3 do
             name: "media_tweet_id_fkey",
             type: :uuid,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
     end
   end
 

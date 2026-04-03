@@ -38,6 +38,24 @@ defmodule Mixer.Posts.Media do
     end
   end
 
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action(:upload) do
+      authorize_if actor_present()
+    end
+
+    policy action(:link_to_tweet) do
+      authorize_if relates_to_actor_via(:user)
+    end
+
+    policy action_type(:destroy) do
+      authorize_if relates_to_actor_via(:user)
+    end
+  end
+
   attributes do
     uuid_primary_key :id
 
@@ -62,24 +80,6 @@ defmodule Mixer.Posts.Media do
     belongs_to :tweet, Mixer.Posts.Tweet do
       allow_nil? true
       public? true
-    end
-  end
-
-  policies do
-    policy action_type(:read) do
-      authorize_if always()
-    end
-
-    policy action(:upload) do
-      authorize_if actor_present()
-    end
-
-    policy action(:link_to_tweet) do
-      authorize_if relates_to_actor_via(:user)
-    end
-
-    policy action_type(:destroy) do
-      authorize_if relates_to_actor_via(:user)
     end
   end
 end

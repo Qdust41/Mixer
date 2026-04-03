@@ -22,14 +22,21 @@ defmodule Mixer.Accounts.User.Senders.SendNewUserConfirmationEmail do
 
   defp body(params) do
     link = url(~p"/confirm_new_user/#{params[:token]}")
-    email_template("Confirm your email", "Welcome to Mixer!", """
-      <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        Thanks for signing up. Just one more step — confirm your email address to activate your account.
-      </p>
-      <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        If you didn't create an account on Mixer, you can safely ignore this email.
-      </p>
-    """, link, "Confirm Email Address")
+
+    email_template(
+      "Confirm your email",
+      "Welcome to Mixer!",
+      """
+        <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          Thanks for signing up. Just one more step — confirm your email address to activate your account.
+        </p>
+        <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          If you didn't create an account on Mixer, you can safely ignore this email.
+        </p>
+      """,
+      link,
+      "Confirm Email Address"
+    )
   end
 
   defp email_template(title, greeting, content, button_url, button_label) do

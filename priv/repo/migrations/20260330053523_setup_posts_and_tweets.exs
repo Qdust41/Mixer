@@ -18,7 +18,8 @@ defmodule Mixer.Repo.Migrations.SetupPostsAndTweets do
             name: "tweets_user_id_fkey",
             type: :uuid,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
 
       add :state, :text, null: false, default: "drafted"
     end

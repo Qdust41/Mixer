@@ -14,10 +14,6 @@ defmodule Mixer.Posts.Tweet do
     repo Mixer.Repo
   end
 
-  typescript do
-    type_name "tweets"
-  end
-
   state_machine do
     initial_states [:drafted, :posted]
     default_initial_state :drafted
@@ -25,6 +21,10 @@ defmodule Mixer.Posts.Tweet do
     transitions do
       transition :create, from: :*, to: :posted
     end
+  end
+
+  typescript do
+    type_name "tweets"
   end
 
   actions do
@@ -36,6 +36,7 @@ defmodule Mixer.Posts.Tweet do
       argument :media_id, :uuid, allow_nil?: true
       change relate_actor(:user)
       change transition_state(:posted)
+
       change fn changeset, context ->
         case Ash.Changeset.get_argument(changeset, :media_id) do
           nil ->
@@ -45,7 +46,9 @@ defmodule Mixer.Posts.Tweet do
             Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
               Mixer.Posts.Media
               |> Ash.get!(media_id, authorize?: false)
-              |> Ash.Changeset.for_update(:link_to_tweet, %{tweet_id: tweet.id}, actor: context.actor)
+              |> Ash.Changeset.for_update(:link_to_tweet, %{tweet_id: tweet.id},
+                actor: context.actor
+              )
               |> Ash.update!()
 
               {:ok, tweet}
@@ -111,6 +114,32 @@ defmodule Mixer.Posts.Tweet do
     end
   end
 
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action_type(:create) do
+      authorize_if actor_present()
+    end
+
+    policy action(:update) do
+      authorize_if relates_to_actor_via(:user)
+    end
+
+    policy action(:destroy) do
+      authorize_if relates_to_actor_via(:user)
+    end
+
+    policy action(:like) do
+      authorize_if actor_present()
+    end
+
+    policy action(:unlike) do
+      authorize_if actor_present()
+    end
+  end
+
   attributes do
     uuid_primary_key :id
 
@@ -162,32 +191,6 @@ defmodule Mixer.Posts.Tweet do
     exists :liked_by_me, :tweet_likes do
       public? true
       filter expr(user_id == ^actor(:id))
-    end
-  end
-
-  policies do
-    policy action_type(:read) do
-      authorize_if always()
-    end
-
-    policy action_type(:create) do
-      authorize_if actor_present()
-    end
-
-    policy action(:update) do
-      authorize_if relates_to_actor_via(:user)
-    end
-
-    policy action(:destroy) do
-      authorize_if relates_to_actor_via(:user)
-    end
-
-    policy action(:like) do
-      authorize_if actor_present()
-    end
-
-    policy action(:unlike) do
-      authorize_if actor_present()
     end
   end
 

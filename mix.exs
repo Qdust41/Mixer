@@ -133,18 +133,21 @@ defmodule Mixer.MixProject do
         build: [
           "ash-framework": [
             # The description tells people how to use this skill.
-            description: "Use this skill working with Ash Framework or any of its extensions. Always consult this when making any domain changes, features or fixes.",
+            description:
+              "Use this skill working with Ash Framework or any of its extensions. Always consult this when making any domain changes, features or fixes.",
             # Include all Ash dependencies
             usage_rules: [:ash, ~r/^ash_/]
           ],
           "phoenix-framework": [
-            description: "Use this skill working with Phoenix Framework. Consult this when working with the web layer, controllers, views, liveviews etc.",
+            description:
+              "Use this skill working with Phoenix Framework. Consult this when working with the web layer, controllers, views, liveviews etc.",
             # Include all Phoenix dependencies
             usage_rules: [:phoenix, ~r/^phoenix_/]
           ]
         ]
       ]
     ]
+
     [
       file: "AGENTS.md",
       usage_rules: ["usage_rules:all"],
@@ -152,11 +155,13 @@ defmodule Mixer.MixProject do
         location: ".agents/skills",
         build: [
           "ash-framework": [
-            description: "Use this skill working with Ash Framework or any of its extensions. Always consult this when making any domain changes, features or fixes.",
+            description:
+              "Use this skill working with Ash Framework or any of its extensions. Always consult this when making any domain changes, features or fixes.",
             usage_rules: [:ash, ~r/^ash_/]
           ],
           "phoenix-framework": [
-            description: "Use this skill working with Phoenix Framework. Consult this when working with the web layer, controllers, views, liveviews etc.",
+            description:
+              "Use this skill working with Phoenix Framework. Consult this when working with the web layer, controllers, views, liveviews etc.",
             usage_rules: [:phoenix, ~r/^phoenix_/]
           ]
         ]

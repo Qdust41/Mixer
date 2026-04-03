@@ -2,7 +2,11 @@ defmodule MixerWeb.PageController do
   use MixerWeb, :controller
 
   def home(conn, _params) do
-    render(conn, :home)
+    if conn.assigns[:current_user] do
+      redirect(conn, to: ~p"/feed")
+    else
+      render(conn, :home)
+    end
   end
 
   def index(conn, _params) do
@@ -28,11 +32,11 @@ defmodule MixerWeb.PageController do
     conn
     |> put_root_layout(html: {MixerWeb.Layouts, :spa_root})
     |> render(:index,
-        current_user: conn.assigns[:current_user],
-        media_host: "#{asset_host}/#{bucket}",
-        page: page,
-        tweet_id: tweet_id,
-        user_id: user_id
-      )
+      current_user: conn.assigns[:current_user],
+      media_host: "#{asset_host}/#{bucket}",
+      page: page,
+      tweet_id: tweet_id,
+      user_id: user_id
+    )
   end
 end

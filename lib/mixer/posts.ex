@@ -3,16 +3,6 @@ defmodule Mixer.Posts do
     otp_app: :mixer,
     extensions: [AshTypescript.Rpc, AshAdmin.Domain]
 
-  admin do
-    show? true
-  end
-
-  resources do
-    resource Mixer.Posts.Tweet
-    resource Mixer.Posts.TweetLike
-    resource Mixer.Posts.Media
-  end
-
   typescript_rpc do
     resource Mixer.Posts.Tweet do
       rpc_action :create_tweet, :create
@@ -26,5 +16,15 @@ defmodule Mixer.Posts do
     resource Mixer.Posts.Media do
       rpc_action :read_media, :read
     end
+  end
+
+  admin do
+    show? true
+  end
+
+  resources do
+    resource Mixer.Posts.Tweet
+    resource Mixer.Posts.TweetLike
+    resource Mixer.Posts.Media
   end
 end

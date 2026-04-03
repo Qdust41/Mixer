@@ -17,7 +17,8 @@ defmodule Mixer.Repo.Migrations.AddTweetLikes do
             name: "tweet_likes_tweet_id_fkey",
             type: :uuid,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
 
       add :user_id,
           references(:users,
@@ -25,7 +26,8 @@ defmodule Mixer.Repo.Migrations.AddTweetLikes do
             name: "tweet_likes_user_id_fkey",
             type: :uuid,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
     end
 
     create unique_index(:tweet_likes, [:tweet_id, :user_id],

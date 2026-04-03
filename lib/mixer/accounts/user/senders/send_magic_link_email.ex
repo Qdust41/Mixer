@@ -31,14 +31,21 @@ defmodule Mixer.Accounts.User.Senders.SendMagicLinkEmail do
   defp body(params) do
     # NOTE: You may have to change this to match your magic link acceptance URL.
     link = url(~p"/magic_link/#{params[:token]}")
-    email_template("Your magic link", "Hello, #{params[:email]}!", """
-      <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        Use the button below to sign in to Mixer. This link is valid for a short time and can only be used once.
-      </p>
-      <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        If you didn't request this, you can safely ignore this email.
-      </p>
-    """, link, "Sign In to Mixer")
+
+    email_template(
+      "Your magic link",
+      "Hello, #{params[:email]}!",
+      """
+        <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          Use the button below to sign in to Mixer. This link is valid for a short time and can only be used once.
+        </p>
+        <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          If you didn't request this, you can safely ignore this email.
+        </p>
+      """,
+      link,
+      "Sign In to Mixer"
+    )
   end
 
   defp email_template(title, greeting, content, button_url, button_label) do

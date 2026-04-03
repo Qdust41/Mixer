@@ -23,6 +23,20 @@ defmodule Mixer.Posts.TweetLike do
     end
   end
 
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action(:create) do
+      authorize_if actor_present()
+    end
+
+    policy action_type(:destroy) do
+      authorize_if relates_to_actor_via(:user)
+    end
+  end
+
   attributes do
     uuid_primary_key :id
 
@@ -51,19 +65,5 @@ defmodule Mixer.Posts.TweetLike do
 
   identities do
     identity :unique_user_tweet, [:tweet_id, :user_id]
-  end
-
-  policies do
-    policy action_type(:read) do
-      authorize_if always()
-    end
-
-    policy action(:create) do
-      authorize_if actor_present()
-    end
-
-    policy action_type(:destroy) do
-      authorize_if relates_to_actor_via(:user)
-    end
   end
 end

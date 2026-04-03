@@ -22,14 +22,21 @@ defmodule Mixer.Accounts.User.Senders.SendPasswordResetEmail do
 
   defp body(params) do
     link = url(~p"/password-reset/#{params[:token]}")
-    email_template("Reset your password", "Password reset request", """
-      <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        We received a request to reset the password for your Mixer account. Click the button below to choose a new one.
-      </p>
-      <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
-        If you didn't request a password reset, you can safely ignore this email — your password will not change.
-      </p>
-    """, link, "Reset My Password")
+
+    email_template(
+      "Reset your password",
+      "Password reset request",
+      """
+        <p style="margin:0 0 20px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          We received a request to reset the password for your Mixer account. Click the button below to choose a new one.
+        </p>
+        <p style="margin:0 0 32px 0;color:#4B5563;font-size:16px;line-height:1.6;">
+          If you didn't request a password reset, you can safely ignore this email — your password will not change.
+        </p>
+      """,
+      link,
+      "Reset My Password"
+    )
   end
 
   defp email_template(title, greeting, content, button_url, button_label) do
