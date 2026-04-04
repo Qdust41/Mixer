@@ -10,7 +10,9 @@ defmodule MixerWeb.PageControllerTest do
           email: "test@example.com",
           password: "Password1!",
           password_confirmation: "Password1!"
-        }, authorize?: false)
+        },
+        authorize?: false
+      )
       |> Ash.create!()
 
     conn =

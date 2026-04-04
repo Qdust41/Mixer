@@ -55,8 +55,20 @@ const AuthCtx = createContext({ email: "", userId: "" });
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function timeAgo(): string {
-  return "just now";
+function timeAgo(insertedAt?: string | null): string {
+  if (!insertedAt) return "just now";
+  const now = Date.now();
+  const then = new Date(insertedAt).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 5) return "just now";
+  if (diffSec < 60) return `${diffSec}s`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d`;
+  return new Date(insertedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function getAssetHost(): string {
@@ -501,7 +513,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
         <div className="mx-tweet-header">
           <span className="mx-tweet-handle">{tweet.userEmail ?? "@mixer"}</span>
           <span className="mx-tweet-dot">·</span>
-          <span className="mx-tweet-time">{timeAgo()}</span>
+          <span className="mx-tweet-time" title={tweet.insertedAt ? new Date(tweet.insertedAt).toLocaleString() : undefined}>{timeAgo(tweet.insertedAt)}</span>
           {canModify && (
             <div className="mx-tweet-actions">
               <button
