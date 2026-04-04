@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import {
@@ -52,6 +52,28 @@ type Tweet = {
 // ── Auth context ───────────────────────────────────────────────────────────────
 
 const AuthCtx = createContext({ email: "", userId: "" });
+
+// ── Responsive helper ─────────────────────────────────────────────────────────
+// Returns true when the viewport is wider than 960 px (desktop layout).
+// Uses useSyncExternalStore so it re-renders on resize without a manual
+// useEffect + useState dance.
+
+const DESKTOP_MQ = typeof window !== "undefined"
+  ? window.matchMedia("(min-width: 961px)")
+  : null;
+
+function subscribe(cb: () => void) {
+  DESKTOP_MQ?.addEventListener("change", cb);
+  return () => DESKTOP_MQ?.removeEventListener("change", cb);
+}
+
+function useIsDesktop(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => DESKTOP_MQ?.matches ?? true,
+    () => true, // SSR snapshot (never actually used here)
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -1203,6 +1225,7 @@ function App() {
   const profileUserId = appEl.dataset.userId || null;
 
   const [mobileCompose, setMobileCompose] = useState(false);
+  const isDesktop = useIsDesktop();
 
   const onFeedPage = page === "feed" || page === "tweet";
   const onUsersPage = page === "users" || page === "user-detail";
@@ -1267,58 +1290,62 @@ function App() {
     <AuthCtx.Provider value={{ email, userId }}>
       <QueryClientProvider client={queryClient}>
         <div className="mx-root">
-          <aside className="mx-sidebar">
-            <div className="mx-logo">
-              <span className="mx-logo-icon">⬡</span>
-              <span className="mx-logo-text">Mixer</span>
-            </div>
-            <nav className="mx-nav">
-              <a className={`mx-nav-item${onFeedPage ? " mx-nav-active" : ""}`} href="/feed">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                </svg>
-                Feed
-              </a>
-              <a className={`mx-nav-item${onUsersPage ? " mx-nav-active" : ""}`} href="/users">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                </svg>
-                Users
-              </a>
-            </nav>
-            <div className="mx-sidebar-footer">
-              {email ? (
-                <>
-                  <span className="mx-version" style={{ color: "var(--mx-fg2)" }}>{email}</span>
-                  <a className="mx-auth-link" href="/sign-out">Sign out</a>
-                </>
-              ) : (
-                <>
-                  <a className="mx-auth-link" href="/register">Create account</a>
-                  <a className="mx-auth-link" href="/sign-in">Sign in</a>
-                </>
-              )}
-              <span className="mx-version">v0.1.0</span>
-            </div>
-          </aside>
+          {isDesktop && (
+            <aside className="mx-sidebar">
+              <div className="mx-logo">
+                <span className="mx-logo-icon">⬡</span>
+                <span className="mx-logo-text">Mixer</span>
+              </div>
+              <nav className="mx-nav">
+                <a className={`mx-nav-item${onFeedPage ? " mx-nav-active" : ""}`} href="/feed">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                  </svg>
+                  Feed
+                </a>
+                <a className={`mx-nav-item${onUsersPage ? " mx-nav-active" : ""}`} href="/users">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                  </svg>
+                  Users
+                </a>
+              </nav>
+              <div className="mx-sidebar-footer">
+                {email ? (
+                  <>
+                    <span className="mx-version" style={{ color: "var(--mx-fg2)" }}>{email}</span>
+                    <a className="mx-auth-link" href="/sign-out">Sign out</a>
+                  </>
+                ) : (
+                  <>
+                    <a className="mx-auth-link" href="/register">Create account</a>
+                    <a className="mx-auth-link" href="/sign-in">Sign in</a>
+                  </>
+                )}
+                <span className="mx-version">v0.1.0</span>
+              </div>
+            </aside>
+          )}
 
           <main className="mx-main">
             {renderMain()}
           </main>
 
-          <div className="mx-rightbar">
-            <div className="mx-info-card">
-              <h3 className="mx-info-title">About Mixer</h3>
-              <p className="mx-info-body">
-                A minimal social feed built with Ash Framework, Phoenix, and React.
-              </p>
-              <div className="mx-stack">
-                {["Ash 3", "Phoenix 1.8", "AshTypescript", "React 19"].map((s) => (
-                  <span key={s} className="mx-tag">{s}</span>
-                ))}
+          {isDesktop && (
+            <div className="mx-rightbar">
+              <div className="mx-info-card">
+                <h3 className="mx-info-title">About Mixer</h3>
+                <p className="mx-info-body">
+                  A minimal social feed built with Ash Framework, Phoenix, and React.
+                </p>
+                <div className="mx-stack">
+                  {["Ash 3", "Phoenix 1.8", "AshTypescript", "React 19"].map((s) => (
+                    <span key={s} className="mx-tag">{s}</span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Mobile-only bottom nav — hidden on desktop via CSS */}

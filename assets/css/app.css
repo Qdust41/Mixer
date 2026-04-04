@@ -152,31 +152,6 @@ html, body {
   margin: 0 auto;
 }
 
-@media (max-width: 960px) {
-  .mx-root { grid-template-columns: 64px 1fr; }
-  .mx-rightbar { display: none; }
-}
-@media (max-width: 640px) {
-  .mx-root { grid-template-columns: 1fr; }
-  .mx-sidebar { display: none; }
-  /* space for fixed bottom nav */
-  .mx-main { padding-bottom: 72px; }
-  /* hide inline compose on mobile — the overlay handles it */
-  .mx-compose-wrapper { display: none; }
-  /* tighten card spacing */
-  .mx-feed { padding: 0.625rem 0.625rem; gap: 0.5rem; }
-  .mx-tweet { padding: 0.875rem 0.875rem; }
-  /* truncate long email addresses */
-  .mx-tweet-handle {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 180px;
-  }
-  .mx-header { padding: 0.75rem 1rem; }
-  .mx-detail { padding: 0.875rem 1rem; }
-}
-
 /* ── Sidebar ── */
 .mx-sidebar {
   position: sticky;
@@ -841,7 +816,7 @@ html, body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .mx-mobile-nav { display: flex; }
 }
 
@@ -906,7 +881,7 @@ html, body {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .mx-compose-overlay {
     display: flex;
     flex-direction: column;
@@ -958,4 +933,35 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 1.25rem;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────────
+   Responsive layout overrides
+   IMPORTANT: these rules must live AFTER all component base rules so that
+   the cascade works correctly (later rule of equal specificity wins).
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Tablet + mobile (≤ 960 px): single column, no side panels, bottom nav */
+@media (max-width: 960px) {
+  .mx-root         { grid-template-columns: 1fr; }
+  .mx-sidebar      { display: none; }
+  .mx-rightbar     { display: none; }
+  /* room for fixed bottom nav */
+  .mx-main         { padding-bottom: 72px; }
+  /* hide inline compose — the overlay FAB handles it */
+  .mx-compose-wrapper { display: none; }
+}
+
+/* Narrow phones (≤ 640 px): tighten spacing */
+@media (max-width: 640px) {
+  .mx-feed  { padding: 0.625rem; gap: 0.5rem; }
+  .mx-tweet { padding: 0.875rem; }
+  .mx-tweet-handle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+  }
+  .mx-header { padding: 0.75rem 1rem; }
+  .mx-detail { padding: 0.875rem 1rem; }
 }
