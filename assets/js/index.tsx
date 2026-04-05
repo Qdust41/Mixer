@@ -5,6 +5,7 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -861,20 +862,53 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
   );
 }
 
+const FEED_PAGE_SIZE = 10;
+
 function Feed() {
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["tweets"],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readTweet({
         fields: ["id", "content", "likes", "likedByMe", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
         sort: "-insertedAt",
+        page: { limit: FEED_PAGE_SIZE, offset: pageParam },
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load tweets");
-      const tweets = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
-      return tweets as Tweet[];
+      const pageData = res.data as any;
+      const tweets: Tweet[] = Array.isArray(pageData) ? pageData : (pageData?.results ?? []);
+      const hasMore: boolean = Array.isArray(pageData) ? false : (pageData?.hasMore ?? false);
+      return { tweets, hasMore, nextOffset: pageParam + FEED_PAGE_SIZE };
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
   });
+
+  // IntersectionObserver — fires fetchNextPage when the sentinel div scrolls into view
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (isLoading) return <Spinner />;
   if (isError) {
@@ -883,7 +917,7 @@ function Feed() {
     );
   }
 
-  const tweets = data ?? [];
+  const tweets = data?.pages.flatMap((p) => p.tweets) ?? [];
 
   if (tweets.length === 0) {
     return (
@@ -900,6 +934,9 @@ function Feed() {
       {tweets.map((t) => (
         <TweetCard key={t.id} tweet={t} />
       ))}
+      {/* Sentinel element — entering the viewport triggers loading the next page */}
+      <div ref={sentinelRef} style={{ height: "1px" }} />
+      {isFetchingNextPage && <Spinner />}
     </div>
   );
 }
