@@ -12,6 +12,7 @@ import {
 import {
   createTweet,
   readTweet,
+  readFollowingFeed,
   destroyTweet,
   likeTweet,
   unlikeTweet,
@@ -224,6 +225,7 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tweets"] });
+      qc.invalidateQueries({ queryKey: ["following_tweets"] });
       setText("");
       setError(null);
       setMediaId(null);
@@ -477,7 +479,10 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
       });
       if (!res.success) throw new Error(res.errors?.[0]?.message ?? "Failed to delete");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tweets"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tweets"] });
+      qc.invalidateQueries({ queryKey: ["following_tweets"] });
+    },
     onError: (e: Error) => setError(e.message),
   });
 
@@ -493,6 +498,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tweets"] });
+      qc.invalidateQueries({ queryKey: ["following_tweets"] });
       setEditing(false);
       setError(null);
     },
@@ -511,6 +517,7 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tweets"] });
+      qc.invalidateQueries({ queryKey: ["following_tweets"] });
       setError(null);
     },
     onError: (e: Error) => setError(e.message),
@@ -864,6 +871,100 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
 
 const FEED_PAGE_SIZE = 10;
 
+function FollowingFeed() {
+  const { userId } = useContext(AuthCtx);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["following_tweets"],
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
+      const res = await readFollowingFeed({
+        fields: ["id", "content", "likes", "likedByMe", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        sort: "-insertedAt",
+        page: { limit: FEED_PAGE_SIZE, offset: pageParam },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load following feed");
+      const pageData = res.data as any;
+      const tweets: Tweet[] = Array.isArray(pageData) ? pageData : (pageData?.results ?? []);
+      const hasMore: boolean = Array.isArray(pageData) ? false : (pageData?.hasMore ?? false);
+      return { tweets, hasMore, nextOffset: pageParam + FEED_PAGE_SIZE };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
+    enabled: !!userId,
+  });
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (!userId) {
+    return (
+      <div className="mx-empty">
+        <div className="mx-empty-icon">★</div>
+        <p className="mx-empty-title">Your personalised feed</p>
+        <p className="mx-empty-sub">
+          <a href="/sign-in" style={{ color: "var(--mx-accent)", textDecoration: "none" }}>Sign in</a>
+          {" "}to see posts from people you follow.
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <Spinner />;
+  if (isError) {
+    return (
+      <ErrorBanner message={(error as Error)?.message ?? "Could not load following feed"} />
+    );
+  }
+
+  const tweets = data?.pages.flatMap((p) => p.tweets) ?? [];
+
+  if (tweets.length === 0) {
+    return (
+      <div className="mx-empty">
+        <div className="mx-empty-icon">★</div>
+        <p className="mx-empty-title">Nothing here yet</p>
+        <p className="mx-empty-sub">
+          Follow some people from the{" "}
+          <a href="/users" style={{ color: "var(--mx-accent)", textDecoration: "none" }}>Users</a>
+          {" "}page to fill this feed.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-feed">
+      {tweets.map((t) => (
+        <TweetCard key={t.id} tweet={t} />
+      ))}
+      <div ref={sentinelRef} style={{ height: "1px" }} />
+      {isFetchingNextPage && <Spinner />}
+    </div>
+  );
+}
+
 function Feed() {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -941,12 +1042,12 @@ function Feed() {
   );
 }
 
-function RefreshButton() {
+function RefreshButton({ queryKey = ["tweets"] }: { queryKey?: string[] }) {
   const qc = useQueryClient();
   const [spinning, setSpinning] = useState(false);
   async function refresh() {
     setSpinning(true);
-    await qc.invalidateQueries({ queryKey: ["tweets"] });
+    await qc.invalidateQueries({ queryKey });
     setTimeout(() => setSpinning(false), 600);
   }
   return (
@@ -1173,6 +1274,7 @@ function MobileNav({
   onCompose: () => void;
 }) {
   const onFeedPage = page === "feed" || page === "tweet";
+  const onFollowingPage = page === "following";
   const onUsersPage = page === "users" || page === "user-detail";
 
   return (
@@ -1185,6 +1287,16 @@ function MobileNav({
           <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
         </svg>
         <span>Feed</span>
+      </a>
+
+      <a
+        href="/following"
+        className={`mx-mobile-nav-item${onFollowingPage ? " mx-mobile-nav-item--active" : ""}`}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+        <span>Following</span>
       </a>
 
       <button
@@ -1265,6 +1377,7 @@ function App() {
   const isDesktop = useIsDesktop();
 
   const onFeedPage = page === "feed" || page === "tweet";
+  const onFollowingPage = page === "following";
   const onUsersPage = page === "users" || page === "user-detail";
 
   function renderMain() {
@@ -1276,6 +1389,16 @@ function App() {
               <h1 className="mx-header-title">Tweet</h1>
             </header>
             <TweetDetail tweetId={tweetId!} />
+          </>
+        );
+      case "following":
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">Following</h1>
+              <RefreshButton queryKey={["following_tweets"]} />
+            </header>
+            <FollowingFeed />
           </>
         );
       case "users":
@@ -1339,6 +1462,12 @@ function App() {
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                   </svg>
                   Feed
+                </a>
+                <a className={`mx-nav-item${onFollowingPage ? " mx-nav-active" : ""}`} href="/following">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
+                  Following
                 </a>
                 <a className={`mx-nav-item${onUsersPage ? " mx-nav-active" : ""}`} href="/users">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

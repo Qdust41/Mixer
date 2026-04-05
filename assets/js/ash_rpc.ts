@@ -843,6 +843,73 @@ export async function validateLikeTweet(
 }
 
 
+export type ReadFollowingFeedFields = UnifiedFieldSelection<tweetsResourceSchema>[];
+export type InferReadFollowingFeedResult<
+  Fields extends ReadFollowingFeedFields,
+> = Array<InferResult<tweetsResourceSchema, Fields>>;
+
+export type ReadFollowingFeedResult<Fields extends ReadFollowingFeedFields> = | { success: true; data: InferReadFollowingFeedResult<Fields>; }
+| { success: false; errors: AshRpcError[]; }
+
+;
+
+/**
+ * Read Tweet records
+ *
+ * @ashActionType :read
+ */
+export async function readFollowingFeed<Fields extends ReadFollowingFeedFields>(
+  config: {
+  tenant?: string;
+  fields: Fields;
+  filter?: tweetsFilterInput;
+  sort?: SortString<tweetsSortField> | SortString<tweetsSortField>[];
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ReadFollowingFeedResult<Fields>> {
+  const payload = {
+    action: "read_following_feed",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    ...(config.fields !== undefined && { fields: config.fields }),
+    ...(config.filter && { filter: config.filter }),
+    ...(config.sort && { sort: Array.isArray(config.sort) ? config.sort.join(",") : config.sort })
+  };
+
+  return executeActionRpcRequest<ReadFollowingFeedResult<Fields>>(
+    payload,
+    config
+  );
+}
+
+
+/**
+ * Validate: Read Tweet records
+ *
+ * @ashActionType :read
+ * @validation true
+ */
+export async function validateReadFollowingFeed(
+  config: {
+  tenant?: string;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ValidationResult> {
+  const payload = {
+    action: "read_following_feed",
+    ...(config.tenant !== undefined && { tenant: config.tenant })
+  };
+
+  return executeValidationRpcRequest<ValidationResult>(
+    payload,
+    config
+  );
+}
+
+
 export type ReadTweetFields = UnifiedFieldSelection<tweetsResourceSchema>[];
 
 

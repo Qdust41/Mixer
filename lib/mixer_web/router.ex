@@ -40,6 +40,7 @@ defmodule MixerWeb.Router do
     get "/", PageController, :home
     get "/feed", PageController, :index
     get "/feed/:tweet_id", PageController, :show
+    get "/following", PageController, :following
     get "/users", PageController, :users_index
     get "/users/:user_id", PageController, :user_show
     post "/rpc/run", AshTypescriptRpcController, :run

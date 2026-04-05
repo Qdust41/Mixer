@@ -30,6 +30,13 @@ defmodule Mixer.Posts.Tweet do
   actions do
     defaults [:read, :destroy]
 
+    read :following_feed do
+      filter expr(
+               user_id == ^actor(:id) or
+                 exists(user.followers, follower_id == ^actor(:id))
+             )
+    end
+
     create :create do
       upsert? true
       accept [:content]

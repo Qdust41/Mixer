@@ -17,6 +17,10 @@ defmodule MixerWeb.PageController do
     render_spa(conn, %{page: "tweet", tweet_id: tweet_id, user_id: nil})
   end
 
+  def following(conn, _params) do
+    render_spa(conn, %{page: "following", tweet_id: nil, user_id: nil})
+  end
+
   def users_index(conn, _params) do
     render_spa(conn, %{page: "users", tweet_id: nil, user_id: nil})
   end

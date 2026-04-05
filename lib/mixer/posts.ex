@@ -8,6 +8,7 @@ defmodule Mixer.Posts do
       rpc_action :create_tweet, :create
       rpc_action :like_tweet, :like
       rpc_action :read_tweet, :read
+      rpc_action :read_following_feed, :following_feed
       rpc_action :unlike_tweet, :unlike
       rpc_action :update_tweet, :update
       rpc_action :destroy_tweet, :destroy
