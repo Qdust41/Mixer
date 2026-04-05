@@ -5,7 +5,9 @@ defmodule MixerWeb.PageController do
     if conn.assigns[:current_user] do
       redirect(conn, to: ~p"/feed")
     else
-      render(conn, :home)
+      conn
+      |> assign(:page_title, "Mixer")
+      |> render(:home)
     end
   end
 

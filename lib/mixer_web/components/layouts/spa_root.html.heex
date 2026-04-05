@@ -8,7 +8,18 @@ SPDX-License-Identifier: MIT
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="AshTypescript">Page</.live_title>
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <.live_title default="Mixer">
+      {case @page do
+        "feed" -> "Mixer · Feed"
+        "tweet" -> "Mixer · Post"
+        "following" -> "Mixer · Following"
+        "profile" -> "Mixer · My Profile"
+        "users" -> "Mixer · People"
+        "user-detail" -> "Mixer · Profile"
+        _ -> "Mixer"
+      end}
+    </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
   </head>
   <body>
