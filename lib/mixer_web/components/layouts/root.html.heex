@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <%
+      meta_title = (assigns[:page_title] || "Mixer")
+      meta_description = assigns[:page_description] || "Mixer is a social feed for all. Come join the conversation — built with Elixir."
+    %>
+    <meta name="description" content={meta_description} />
+    <meta name="robots" content={assigns[:robots] || "index, follow"} />
+    <meta property="og:site_name" content="Mixer" />
+    <meta property="og:title" content={meta_title} />
+    <meta property="og:description" content={meta_description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={meta_title} />
+    <meta name="twitter:description" content={meta_description} />
     <.live_title suffix=" · Mixer">
       {assigns[:page_title] || "Mixer"}
     </.live_title>
