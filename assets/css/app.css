@@ -303,6 +303,12 @@ html, body {
   user-select: none;
 }
 
+.mx-tweet-avatar--lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1.25rem;
+}
+
 .mx-compose-body { flex: 1; }
 
 .mx-compose-textarea, .mx-edit-textarea {
@@ -964,4 +970,6 @@ html, body {
   }
   .mx-header { padding: 0.75rem 1rem; }
   .mx-detail { padding: 0.875rem 1rem; }
+  /* 5-item nav: slightly smaller labels so nothing wraps */
+  .mx-mobile-nav-item { font-size: 0.6rem; }
 }

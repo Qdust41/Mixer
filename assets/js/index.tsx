@@ -1208,7 +1208,7 @@ function UserList() {
   );
 }
 
-function UserDetail({ userId }: { userId: string }) {
+function UserDetail({ userId, isStandalone = false }: { userId: string; isStandalone?: boolean }) {
   const { userId: currentUserId } = useContext(AuthCtx);
   const { follow, unfollow, isPending } = useFollowUser(userId);
   const { data: user, isLoading, isError } = useQuery({
@@ -1228,29 +1228,37 @@ function UserDetail({ userId }: { userId: string }) {
   if (isLoading) return <Spinner />;
   if (isError || !user) return <ErrorBanner message="Could not load user" />;
 
-  const canFollow = !!currentUserId && currentUserId !== userId;
+  const isOwnProfile = currentUserId === userId;
+  const canFollow = !!currentUserId && !isOwnProfile;
   const amIFollowing = user.amIFollowing ?? false;
 
   return (
     <div className="mx-detail">
-      <div className="mx-detail-header">
-        <a href="/users" className="mx-back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-          </svg>
-          Back
-        </a>
-      </div>
+      {!isStandalone && (
+        <div className="mx-detail-header">
+          <a href="/users" className="mx-back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+            Back
+          </a>
+        </div>
+      )}
       <div className="mx-detail-body">
         <div className="mx-detail-author">
-          <div className="mx-tweet-avatar">
-            <span>M</span>
+          <div className="mx-tweet-avatar mx-tweet-avatar--lg">
+            <span>{user.email?.[0]?.toUpperCase() ?? "M"}</span>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               <span className="mx-tweet-handle">{user.email}</span>
               {canFollow && (
                 <FollowButton amIFollowing={amIFollowing} isPending={isPending} onToggle={amIFollowing ? unfollow : follow} />
+              )}
+              {isOwnProfile && isStandalone && (
+                <a href="/sign-out" className="mx-btn-cancel" style={{ textDecoration: "none", fontSize: "0.8rem" }}>
+                  Sign out
+                </a>
               )}
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)", marginTop: "6px", display: "flex", gap: "16px" }}>
@@ -1262,6 +1270,25 @@ function UserDetail({ userId }: { userId: string }) {
       </div>
     </div>
   );
+}
+
+function MyProfile() {
+  const { userId } = useContext(AuthCtx);
+
+  if (!userId) {
+    return (
+      <div className="mx-empty">
+        <div className="mx-empty-icon">◎</div>
+        <p className="mx-empty-title">Your profile</p>
+        <p className="mx-empty-sub">
+          <a href="/sign-in" style={{ color: "var(--mx-accent)", textDecoration: "none" }}>Sign in</a>
+          {" "}to view your profile.
+        </p>
+      </div>
+    );
+  }
+
+  return <UserDetail userId={userId} isStandalone />;
 }
 
 // ── Mobile bottom nav ─────────────────────────────────────────────────────────
@@ -1276,6 +1303,7 @@ function MobileNav({
   const onFeedPage = page === "feed" || page === "tweet";
   const onFollowingPage = page === "following";
   const onUsersPage = page === "users" || page === "user-detail";
+  const onProfilePage = page === "profile";
 
   return (
     <nav className="mx-mobile-nav">
@@ -1328,6 +1356,16 @@ function MobileNav({
         </svg>
         <span>Users</span>
       </a>
+
+      <a
+        href="/profile"
+        className={`mx-mobile-nav-item${onProfilePage ? " mx-mobile-nav-item--active" : ""}`}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+        </svg>
+        <span>Profile</span>
+      </a>
     </nav>
   );
 }
@@ -1379,6 +1417,7 @@ function App() {
   const onFeedPage = page === "feed" || page === "tweet";
   const onFollowingPage = page === "following";
   const onUsersPage = page === "users" || page === "user-detail";
+  const onProfilePage = page === "profile";
 
   function renderMain() {
     switch (page) {
@@ -1417,6 +1456,15 @@ function App() {
               <h1 className="mx-header-title">Profile</h1>
             </header>
             <UserDetail userId={profileUserId!} />
+          </>
+        );
+      case "profile":
+        return (
+          <>
+            <header className="mx-header">
+              <h1 className="mx-header-title">My Profile</h1>
+            </header>
+            <MyProfile />
           </>
         );
       default:
@@ -1474,6 +1522,12 @@ function App() {
                     <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                   </svg>
                   Users
+                </a>
+                <a className={`mx-nav-item${onProfilePage ? " mx-nav-active" : ""}`} href="/profile">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                  Profile
                 </a>
               </nav>
               <div className="mx-sidebar-footer">
