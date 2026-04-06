@@ -12,6 +12,10 @@ defmodule Mixer.Posts.Tweet do
   postgres do
     table "tweets"
     repo Mixer.Repo
+
+    references do
+      reference :parent_tweet, on_delete: :delete
+    end
   end
 
   state_machine do
@@ -39,7 +43,7 @@ defmodule Mixer.Posts.Tweet do
 
     create :create do
       upsert? true
-      accept [:content]
+      accept [:content, :parent_tweet_id]
       argument :media_id, :uuid, allow_nil?: true
       change relate_actor(:user)
       change transition_state(:posted)
@@ -181,6 +185,18 @@ defmodule Mixer.Posts.Tweet do
       public? true
     end
 
+    belongs_to :parent_tweet, Mixer.Posts.Tweet do
+      attribute_type :uuid
+      attribute_writable? true
+      allow_nil? true
+      public? true
+    end
+
+    has_many :comments, Mixer.Posts.Tweet do
+      destination_attribute :parent_tweet_id
+      public? true
+    end
+
     has_many :media, Mixer.Posts.Media do
       public? true
     end
@@ -195,6 +211,10 @@ defmodule Mixer.Posts.Tweet do
   end
 
   aggregates do
+    count :comment_count, :comments do
+      public? true
+    end
+
     exists :liked_by_me, :tweet_likes do
       public? true
       filter expr(user_id == ^actor(:id))

@@ -71,16 +71,20 @@ export type mediaAttributesOnlySchema = {
 // tweets Schema
 export type tweetsResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "likedByMe" | "userEmail";
+  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "parentTweetId" | "commentCount" | "likedByMe" | "userEmail";
   id: UUID;
   content: string;
   likes: number;
   userId: UUID;
   insertedAt: UtcDateTimeUsec;
   state: "posted" | "drafted";
+  parentTweetId: UUID | null;
+  commentCount: number;
   likedByMe: boolean;
   userEmail: string | null;
   user: { __type: "Relationship"; __resource: usersResourceSchema; };
+  parentTweet: { __type: "Relationship"; __resource: tweetsResourceSchema | null; };
+  comments: { __type: "Relationship"; __array: true; __resource: tweetsResourceSchema; };
   media: { __type: "Relationship"; __array: true; __resource: mediaResourceSchema; };
 };
 
@@ -88,13 +92,14 @@ export type tweetsResourceSchema = {
 
 export type tweetsAttributesOnlySchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state";
+  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "parentTweetId";
   id: UUID;
   content: string;
   likes: number;
   userId: UUID;
   insertedAt: UtcDateTimeUsec;
   state: "posted" | "drafted";
+  parentTweetId: UUID | null;
 };
 
 
@@ -251,10 +256,28 @@ export type tweetsFilterInput = {
     in?: Array<"posted" | "drafted">;
   };
 
+  parentTweetId?: {
+    eq?: UUID;
+    notEq?: UUID;
+    in?: Array<UUID>;
+    isNil?: boolean;
+  };
+
   userEmail?: {
     eq?: string;
     notEq?: string;
     in?: Array<string>;
+    isNil?: boolean;
+  };
+
+  commentCount?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
     isNil?: boolean;
   };
 
@@ -265,6 +288,10 @@ export type tweetsFilterInput = {
   };
 
   user?: usersFilterInput;
+
+  parentTweet?: tweetsFilterInput;
+
+  comments?: tweetsFilterInput;
 
   media?: mediaFilterInput;
 
@@ -280,7 +307,7 @@ export type usersFilterField = (typeof usersFilterFields)[number];
 export const mediaFilterFields = ["id", "s3Key", "userId", "tweetId", "user", "tweet"] as const;
 export type mediaFilterField = (typeof mediaFilterFields)[number];
 
-export const tweetsFilterFields = ["id", "content", "likes", "userId", "insertedAt", "state", "userEmail", "likedByMe", "user", "media"] as const;
+export const tweetsFilterFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "commentCount", "likedByMe", "user", "parentTweet", "comments", "media"] as const;
 export type tweetsFilterField = (typeof tweetsFilterFields)[number];
 
 
@@ -293,7 +320,7 @@ export type usersSortField = (typeof usersSortFields)[number];
 export const mediaSortFields = ["id", "s3Key", "userId", "tweetId"] as const;
 export type mediaSortField = (typeof mediaSortFields)[number];
 
-export const tweetsSortFields = ["id", "content", "likes", "userId", "insertedAt", "state", "userEmail", "likedByMe"] as const;
+export const tweetsSortFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "commentCount", "likedByMe"] as const;
 export type tweetsSortField = (typeof tweetsSortFields)[number];
 
 

@@ -696,6 +696,104 @@ html, body {
   margin-bottom: 1rem;
 }
 
+/* ── Comment button on tweet cards ── */
+.mx-comment-btn {
+  text-decoration: none;
+  margin-left: 0.5rem;
+  color: var(--mx-fg2);
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.mx-comment-btn:hover {
+  color: var(--mx-accent);
+  border-color: color-mix(in oklch, var(--mx-accent) 35%, transparent);
+  background: color-mix(in oklch, var(--mx-accent) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+/* Non-interactive reply count badge in detail view */
+.mx-comment-count-badge {
+  margin-left: 0.5rem;
+  cursor: default;
+  pointer-events: none;
+  color: var(--mx-fg2);
+}
+
+/* ── Comments section (below tweet detail) ── */
+.mx-comments-section {
+  border-top: 1px solid var(--mx-border);
+  margin-top: 0.5rem;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.mx-comments-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--mx-fg2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.mx-comments-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--mx-border);
+}
+
+.mx-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* Comment card — slightly indented, more compact */
+.mx-comment {
+  padding: 0.75rem 1rem;
+  border-radius: var(--mx-radius-sm);
+}
+
+/* Small avatar variant for comments and compose-comment */
+.mx-tweet-avatar--sm {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  font-size: 0.75rem;
+}
+
+/* Compact compose box for replies */
+.mx-compose--comment {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mx-border);
+  margin-bottom: 0.25rem;
+}
+.mx-compose--comment .mx-compose-avatar--sm { align-self: flex-start; }
+.mx-compose-textarea--sm {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9375rem;
+}
+
+.mx-btn-post--sm {
+  padding: 0.35rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+/* Small empty state */
+.mx-empty--sm {
+  padding: 1.5rem 0.5rem;
+}
+
+/* Small sign-in CTA */
+.mx-signin-cta--sm {
+  padding: 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--mx-muted);
+}
+
 /* ── Clickable media thumb (used in detail view) ── */
 .mx-media-thumb {
   background: none;

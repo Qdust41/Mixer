@@ -644,6 +644,7 @@ export async function validateReadMedia(
 
 export type CreateTweetInput = {
   content: string;
+  parentTweetId?: UUID | null;
   mediaId?: UUID;
 };
 
