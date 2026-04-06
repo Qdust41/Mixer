@@ -813,20 +813,48 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
     },
   });
 
-  const { data: comments, isLoading: commentsLoading } = useQuery({
+  const commentsSentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data: commentsData,
+    isLoading: commentsLoading,
+    fetchNextPage: fetchNextComments,
+    hasNextPage: hasMoreComments,
+    isFetchingNextPage: isFetchingMoreComments,
+  } = useInfiniteQuery({
     queryKey: ["comments", tweetId],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readTweet({
         fields: ["id", "content", "likes", "likedByMe", "parentTweetId", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
         filter: { parentTweetId: { eq: tweetId } },
         sort: "insertedAt",
+        page: { limit: COMMENTS_PAGE_SIZE, offset: pageParam },
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load comments");
-      const results = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
-      return results as Tweet[];
+      const pageData = res.data as any;
+      const comments: Tweet[] = Array.isArray(pageData) ? pageData : (pageData?.results ?? []);
+      const hasMore: boolean = Array.isArray(pageData) ? false : (pageData?.hasMore ?? false);
+      return { comments, hasMore, nextOffset: pageParam + COMMENTS_PAGE_SIZE };
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
   });
+
+  useEffect(() => {
+    const el = commentsSentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreComments && !isFetchingMoreComments) {
+          fetchNextComments();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMoreComments, isFetchingMoreComments, fetchNextComments]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -1006,26 +1034,33 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
 
         {commentsLoading ? (
           <Spinner />
-        ) : comments && comments.length > 0 ? (
-          <div className="mx-comments-list">
-            {comments.map((c) => (
-              <CommentCard key={c.id} comment={c} />
-            ))}
-          </div>
-        ) : (
-          <div className="mx-empty mx-empty--sm">
-            <p className="mx-empty-sub">No replies yet. Be the first!</p>
-          </div>
-        )}
+        ) : (() => {
+          const comments = commentsData?.pages.flatMap((p) => p.comments) ?? [];
+          return comments.length > 0 ? (
+            <div className="mx-comments-list">
+              {comments.map((c) => (
+                <CommentCard key={c.id} comment={c} parentTweetOwnerId={tweet?.userId} />
+              ))}
+              <div ref={commentsSentinelRef} style={{ height: "1px" }} />
+              {isFetchingMoreComments && <Spinner />}
+            </div>
+          ) : (
+            <div className="mx-empty mx-empty--sm">
+              <p className="mx-empty-sub">No replies yet. Be the first!</p>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
-function CommentCard({ comment }: { comment: Tweet }) {
+function CommentCard({ comment, parentTweetOwnerId }: { comment: Tweet; parentTweetOwnerId?: string }) {
   const { userId: currentUserId } = useContext(AuthCtx);
   const canLike = !!currentUserId;
-  const canModify = !!currentUserId && comment.userId === currentUserId;
+  const canModify = !!currentUserId && (
+    comment.userId === currentUserId || parentTweetOwnerId === currentUserId
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -1116,6 +1151,7 @@ function CommentCard({ comment }: { comment: Tweet }) {
 }
 
 const FEED_PAGE_SIZE = 10;
+const COMMENTS_PAGE_SIZE = 10;
 
 function FollowingFeed() {
   const { userId } = useContext(AuthCtx);

@@ -140,6 +140,7 @@ defmodule Mixer.Posts.Tweet do
 
     policy action(:destroy) do
       authorize_if relates_to_actor_via(:user)
+      authorize_if relates_to_actor_via([:parent_tweet, :user])
     end
 
     policy action(:like) do
