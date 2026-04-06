@@ -35,8 +35,11 @@ defmodule MixerWeb.AuthController do
           You can confirm your account using the link we sent to you, or by resetting your password.
           """
 
+        {_, %AshAuthentication.Errors.UnconfirmedUser{}} ->
+          "You must confirm your email address before signing in. Please check your inbox for a confirmation email."
+
         _ ->
-          "Incorrect email or password"
+          "Incorrect email or password or unconfirmed email"
       end
 
     conn
