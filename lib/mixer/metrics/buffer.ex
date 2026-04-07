@@ -128,14 +128,18 @@ defmodule Mixer.Metrics.Buffer do
 
   defp do_flush(events) do
     rows = Enum.reverse(events)
+    count = length(rows)
 
     try do
-      {count, _} = Mixer.ClickhouseRepo.insert_all(PostEvent, rows)
+      # ClickHouse async inserts acknowledge writes immediately and always
+      # return num_rows: 0 — the data is queued for background commitment.
+      # We use our own row count for the log so it is always accurate.
+      Mixer.ClickhouseRepo.insert_all(PostEvent, rows)
       Logger.debug("[Mixer.Metrics.Buffer] Flushed #{count} event(s) to ClickHouse")
     rescue
       error ->
         Logger.error(
-          "[Mixer.Metrics.Buffer] Failed to flush #{length(rows)} event(s) to ClickHouse: " <>
+          "[Mixer.Metrics.Buffer] Failed to flush #{count} event(s) to ClickHouse: " <>
             Exception.message(error)
         )
     end

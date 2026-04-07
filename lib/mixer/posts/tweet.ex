@@ -66,6 +66,26 @@ defmodule Mixer.Posts.Tweet do
             end)
         end
       end
+
+      # Track a "comment" metric event whenever a reply is posted. We record
+      # the event against the *parent* tweet so that `get_summary/1` and
+      # `get_bulk_summaries/1` can count how many comments each tweet received.
+      change fn changeset, context ->
+        case Ash.Changeset.get_attribute(changeset, :parent_tweet_id) do
+          nil ->
+            changeset
+
+          parent_tweet_id ->
+            Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
+              Mixer.Metrics.track_comment(
+                parent_tweet_id,
+                user_id: context.actor && context.actor.id
+              )
+
+              {:ok, tweet}
+            end)
+        end
+      end
     end
 
     update :update do
@@ -80,6 +100,7 @@ defmodule Mixer.Posts.Tweet do
         Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
           case ensure_like(tweet, context.actor) do
             {:created, _like} ->
+              Mixer.Metrics.track_like(tweet.id, user_id: context.actor && context.actor.id)
               increment_likes(tweet, context.actor)
 
             {:noop, _like} ->
@@ -100,6 +121,7 @@ defmodule Mixer.Posts.Tweet do
         Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
           case remove_like(tweet, context.actor) do
             {:deleted, _like} ->
+              Mixer.Metrics.track_unlike(tweet.id, user_id: context.actor && context.actor.id)
               decrement_likes(tweet, context.actor)
 
             {:noop, _like} ->

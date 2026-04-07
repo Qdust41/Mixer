@@ -16,6 +16,8 @@ defmodule MixerWeb.PageController do
   end
 
   def show(conn, %{"tweet_id" => tweet_id}) do
+    user_id = conn.assigns[:current_user] && conn.assigns[:current_user].id
+    Mixer.Metrics.track_view(tweet_id, user_id: user_id, ip_address: conn.remote_ip)
     render_spa(conn, %{page: "tweet", tweet_id: tweet_id, user_id: nil})
   end
 

@@ -22,19 +22,23 @@ defmodule Mixer.Metrics.PostEvent do
   @primary_key false
 
   schema "post_events" do
-    # LowCardinality(String) in ClickHouse — keep values in the set above
-    field :event_type, :string
+    # Must be Ch-typed so ecto_ch emits LowCardinality(String) in the RowBinary
+    # header, matching the ClickHouse table DDL exactly.
+    field :event_type, Ch, type: "LowCardinality(String)"
 
     # The tweet that the event relates to
     field :tweet_id, Ecto.UUID
 
-    # The acting user; may be nil for anonymous views
-    field :user_id, Ecto.UUID
+    # The acting user; may be nil for anonymous views.
+    # Must be Ch-typed so ecto_ch emits Nullable(UUID) in the RowBinary header,
+    # matching the ClickHouse table DDL exactly.
+    field :user_id, Ch, type: "Nullable(UUID)"
 
     # Wall-clock time of the event (UTC, second precision)
     field :occurred_at, :utc_datetime
 
-    # Optional originating IP, useful for deduplicating anonymous views
-    field :ip_address, :string
+    # Optional originating IP, useful for deduplicating anonymous views.
+    # Nullable(String) for the same reason as user_id above.
+    field :ip_address, Ch, type: "Nullable(String)"
   end
 end
