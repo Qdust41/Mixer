@@ -10,6 +10,10 @@ defmodule Mixer.Application do
     children = [
       MixerWeb.Telemetry,
       Mixer.Repo,
+      # ClickHouse repo for analytics — started before the metrics buffer
+      Mixer.ClickhouseRepo,
+      # In-memory event buffer that batches writes to ClickHouse
+      Mixer.Metrics.Buffer,
       {DNSCluster, query: Application.get_env(:mixer, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Mixer.PubSub},
       # Start a worker by calling: Mixer.Worker.start_link(arg)

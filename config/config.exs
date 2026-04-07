@@ -94,7 +94,7 @@ config :spark,
   ]
 
 config :mixer,
-  ecto_repos: [Mixer.Repo],
+  ecto_repos: [Mixer.Repo, Mixer.ClickhouseRepo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [Mixer.Accounts, Mixer.Posts],
   ash_authentication: [return_error_on_invalid_magic_link_token?: true]
@@ -157,6 +157,11 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# ClickHouse repo — migrations live in priv/clickhouse/migrations
+config :mixer, Mixer.ClickhouseRepo,
+  priv: "priv/clickhouse",
+  migration_source: "ch_schema_migrations"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

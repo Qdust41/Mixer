@@ -106,3 +106,12 @@ config :ex_aws, :s3,
 config :waffle,
   bucket: "mixer-bucket",
   asset_host: "http://localhost:9000"
+
+# ClickHouse (default local install)
+config :mixer, Mixer.ClickhouseRepo,
+  scheme: "http",
+  hostname: "localhost",
+  port: 8123,
+  database: "mixer_metrics",
+  username: "default",
+  password: ""

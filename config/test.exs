@@ -42,3 +42,12 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# ClickHouse — point at a dedicated test database
+config :mixer, Mixer.ClickhouseRepo,
+  scheme: "http",
+  hostname: "localhost",
+  port: 8123,
+  database: "mixer_metrics_test",
+  username: "default",
+  password: ""

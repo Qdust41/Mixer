@@ -22,6 +22,11 @@ end
 
 config :mixer, MixerWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# ClickHouse is available in all environments via env vars when set
+if clickhouse_url = System.get_env("CLICKHOUSE_URL") do
+  config :mixer, Mixer.ClickhouseRepo, url: clickhouse_url
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -39,6 +44,19 @@ if config_env() == :prod do
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
+
+  # ClickHouse — configure via CLICKHOUSE_URL or individual vars
+  unless System.get_env("CLICKHOUSE_URL") do
+    config :mixer, Mixer.ClickhouseRepo,
+      scheme: System.get_env("CLICKHOUSE_SCHEME", "http"),
+      hostname:
+        System.get_env("CLICKHOUSE_HOST") ||
+          raise("Missing environment variable `CLICKHOUSE_HOST`!"),
+      port: String.to_integer(System.get_env("CLICKHOUSE_PORT", "8123")),
+      database: System.get_env("CLICKHOUSE_DATABASE", "mixer_metrics"),
+      username: System.get_env("CLICKHOUSE_USERNAME", "default"),
+      password: System.get_env("CLICKHOUSE_PASSWORD", "")
+  end
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
