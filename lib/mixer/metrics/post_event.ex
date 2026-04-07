@@ -8,13 +8,16 @@ defmodule Mixer.Metrics.PostEvent do
 
   ## Event types
 
-  | event_type  | Description                              |
-  |-------------|------------------------------------------|
-  | `"view"`    | A tweet was displayed to a user          |
-  | `"like"`    | A user liked a tweet                     |
-  | `"unlike"`  | A user removed their like from a tweet   |
-  | `"comment"` | A user replied to a tweet                |
-  | `"share"`   | A user shared / reposted a tweet         |
+  | event_type         | `tweet_id` refers to  | Description                                     |
+  |--------------------|-----------------------|-------------------------------------------------|
+  | `"view"`           | the viewed tweet      | Tweet detail page was loaded                    |
+  | `"post"`           | the new tweet         | A new top-level tweet was published             |
+  | `"comment"`        | the parent tweet      | A reply was posted; count against the parent    |
+  | `"like"`           | the liked tweet       | A user liked a tweet                            |
+  | `"unlike"`         | the unliked tweet     | A user removed their like                       |
+  | `"share"`          | the shared tweet      | A user shared / reposted a tweet                |
+  | `"delete_post"`    | the deleted tweet     | A top-level tweet was deleted by its author     |
+  | `"delete_comment"` | the parent tweet      | A reply was deleted; count against the parent   |
   """
 
   use Ecto.Schema

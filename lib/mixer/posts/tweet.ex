@@ -32,7 +32,7 @@ defmodule Mixer.Posts.Tweet do
   end
 
   actions do
-    defaults [:read, :destroy]
+    defaults [:read]
 
     read :following_feed do
       filter expr(
@@ -67,24 +67,47 @@ defmodule Mixer.Posts.Tweet do
         end
       end
 
-      # Track a "comment" metric event whenever a reply is posted. We record
-      # the event against the *parent* tweet so that `get_summary/1` and
-      # `get_bulk_summaries/1` can count how many comments each tweet received.
+      # Track post / comment creation metrics.
+      # Root tweets emit a "post" event recorded against their own ID.
+      # Replies emit a "comment" event recorded against the parent tweet ID so
+      # that `get_summary/1` can count how many replies a tweet has received.
       change fn changeset, context ->
-        case Ash.Changeset.get_attribute(changeset, :parent_tweet_id) do
-          nil ->
-            changeset
+        parent_tweet_id = Ash.Changeset.get_attribute(changeset, :parent_tweet_id)
+        user_id = context.actor && context.actor.id
 
-          parent_tweet_id ->
-            Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
-              Mixer.Metrics.track_comment(
-                parent_tweet_id,
-                user_id: context.actor && context.actor.id
-              )
+        Ash.Changeset.after_action(changeset, fn _changeset, tweet ->
+          if parent_tweet_id do
+            Mixer.Metrics.track_comment(parent_tweet_id, user_id: user_id)
+          else
+            Mixer.Metrics.track_post(tweet.id, user_id: user_id)
+          end
 
-              {:ok, tweet}
-            end)
-        end
+          {:ok, tweet}
+        end)
+      end
+    end
+
+    # Explicit destroy so we can attach a metrics hook. The policy and cascade
+    # behaviour are identical to the previous default :destroy action.
+    destroy :destroy do
+      require_atomic? false
+
+      change fn changeset, context ->
+        # Capture the record's identity *before* deletion — after the action
+        # completes the row no longer exists.
+        tweet_id = changeset.data.id
+        parent_tweet_id = changeset.data.parent_tweet_id
+        user_id = context.actor && context.actor.id
+
+        Ash.Changeset.after_action(changeset, fn _changeset, result ->
+          if parent_tweet_id do
+            Mixer.Metrics.track_delete_comment(parent_tweet_id, user_id: user_id)
+          else
+            Mixer.Metrics.track_delete_post(tweet_id, user_id: user_id)
+          end
+
+          {:ok, result}
+        end)
       end
     end
 

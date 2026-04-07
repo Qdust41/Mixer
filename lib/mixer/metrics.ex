@@ -33,7 +33,8 @@ defmodule Mixer.Metrics do
   # Event types
   # ---------------------------------------------------------------------------
 
-  @type event_type :: :view | :like | :unlike | :comment | :share
+  @type event_type ::
+          :view | :post | :comment | :like | :unlike | :share | :delete_post | :delete_comment
 
   @type track_opt ::
           {:user_id, binary() | nil}
@@ -69,6 +70,33 @@ defmodule Mixer.Metrics do
   @doc "Track a tweet share / repost event."
   @spec track_share(binary(), [track_opt()]) :: :ok
   def track_share(tweet_id, opts \\ []), do: enqueue("share", tweet_id, opts)
+
+  @doc """
+  Track a new top-level tweet being published.
+
+  The event is recorded against the new tweet's own ID.
+  """
+  @spec track_post(binary(), [track_opt()]) :: :ok
+  def track_post(tweet_id, opts \\ []), do: enqueue("post", tweet_id, opts)
+
+  @doc """
+  Track a top-level tweet being deleted.
+
+  The event is recorded against the deleted tweet's ID.
+  Note: cascade-deleted comments are not individually tracked — only the
+  explicit user-initiated destroy action emits this event.
+  """
+  @spec track_delete_post(binary(), [track_opt()]) :: :ok
+  def track_delete_post(tweet_id, opts \\ []), do: enqueue("delete_post", tweet_id, opts)
+
+  @doc """
+  Track a comment (reply) being deleted.
+
+  The event is recorded against the *parent* tweet's ID so that
+  `get_summary/1` can reflect net comment activity on a tweet.
+  """
+  @spec track_delete_comment(binary(), [track_opt()]) :: :ok
+  def track_delete_comment(tweet_id, opts \\ []), do: enqueue("delete_comment", tweet_id, opts)
 
   # ---------------------------------------------------------------------------
   # Query helpers
