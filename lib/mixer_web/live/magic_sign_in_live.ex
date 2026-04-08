@@ -42,6 +42,7 @@ defmodule MixerWeb.MagicSignInLive do
     form =
       resource
       |> Form.for_action(strategy.sign_in_action_name,
+        params: %{"token" => token},
         domain: domain,
         as: subject_name |> to_string(),
         id: "#{subject_name}-#{strategy_name}-sign-in-form" |> slugify(),
@@ -98,7 +99,7 @@ defmodule MixerWeb.MagicSignInLive do
           }
           method="POST"
         >
-          {hidden_input(form, :token, value: @token)}
+          {hidden_input(form, :token, [])}
 
           <%!-- Username field — only shown for new or username-less users --%>
           <div :if={@needs_username?} class="mt-2 mb-4">
@@ -172,13 +173,41 @@ defmodule MixerWeb.MagicSignInLive do
 
   defp needs_username?(token, resource) do
     with {:ok, claims} <- AshAuthentication.Jwt.peek(token),
-         subject when is_binary(subject) <- Map.get(claims, "sub"),
-         {:ok, user} <- AshAuthentication.subject_to_user(subject, resource) do
+         # 1. Try to find an existing user from the claims
+         user <- find_user(claims, resource),
+         # 2. If a user exists, check if they already have a username
+         false <- is_nil(user) do
       is_nil(user.username)
     else
       _ ->
         # Unknown / new user — ask for username to be safe
         true
     end
+  end
+
+  defp find_user(claims, resource) do
+    # Try 'sub' first if it looks like a user subject (e.g. "User:123")
+    sub = Map.get(claims, "sub")
+
+    user =
+      if is_binary(sub) and String.contains?(sub, ":") do
+        case AshAuthentication.subject_to_user(sub, resource) do
+          {:ok, user} -> user
+          _ -> nil
+        end
+      end
+
+    # If not found via subject, try 'identity' (common in magic link tokens)
+    user ||
+      case Map.get(claims, "identity") || Map.get(claims, "email") do
+        email when is_binary(email) ->
+          case Ash.get(resource, [email: email], action: :get_by_email, authorize?: false) do
+            {:ok, user} -> user
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
   end
 end
