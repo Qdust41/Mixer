@@ -9,7 +9,8 @@ defmodule MixerWeb.PageControllerTest do
         %{
           email: "test@example.com",
           password: "Password1!",
-          password_confirmation: "Password1!"
+          password_confirmation: "Password1!",
+          username: "testuser"
         },
         authorize?: false
       )

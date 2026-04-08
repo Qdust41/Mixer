@@ -177,8 +177,20 @@ defmodule Mixer.Accounts.User do
         sensitive? true
       end
 
+      argument :username, :string do
+        description "The desired username for the user (letters, numbers, underscores)."
+        allow_nil? false
+
+        constraints match: ~r/^[a-zA-Z0-9_]+$/,
+                    min_length: 3,
+                    max_length: 30
+      end
+
       # Sets the email from the argument
       change set_attribute(:email, arg(:email))
+
+      # Sets the username from the argument
+      change set_attribute(:username, arg(:username))
 
       # Hashes the provided password
       change AshAuthentication.Strategy.Password.HashPasswordChange
@@ -209,6 +221,18 @@ defmodule Mixer.Accounts.User do
     read :get_by_email do
       description "Looks up a user by their email"
       get_by :email
+    end
+
+    update :update_profile do
+      description "Update the user's public profile (username, display name)."
+      accept [:username, :display_name]
+      require_atomic? false
+    end
+
+    update :update_avatar do
+      description "Store the S3 key of the user's processed avatar thumbnail."
+      accept [:avatar_url]
+      require_atomic? false
     end
 
     update :reset_password_with_token do
@@ -256,6 +280,15 @@ defmodule Mixer.Accounts.User do
         allow_nil? true
       end
 
+      argument :username, :string do
+        description "Username chosen during first-time magic link registration."
+        allow_nil? true
+
+        constraints match: ~r/^[a-zA-Z0-9_]+$/,
+                    min_length: 3,
+                    max_length: 30
+      end
+
       upsert? true
       upsert_identity :unique_email
       upsert_fields [:email]
@@ -265,6 +298,32 @@ defmodule Mixer.Accounts.User do
 
       change {AshAuthentication.Strategy.RememberMe.MaybeGenerateTokenChange,
               strategy_name: :remember_me}
+
+      # Set username on new users (or existing users who haven't set one yet)
+      change fn changeset, _ctx ->
+        case Ash.Changeset.get_argument(changeset, :username) do
+          nil ->
+            changeset
+
+          username ->
+            Ash.Changeset.after_action(changeset, fn _cs, user ->
+              if is_nil(user.username) do
+                user
+                |> Ash.Changeset.for_update(:update_profile, %{username: username},
+                  authorize?: false
+                )
+                |> Ash.update()
+                |> case do
+                  {:ok, updated} -> {:ok, updated}
+                  # Don't fail the sign-in just because username set failed
+                  {:error, _} -> {:ok, user}
+                end
+              else
+                {:ok, user}
+              end
+            end)
+        end
+      end
 
       metadata :token, :string do
         allow_nil? false
@@ -293,6 +352,14 @@ defmodule Mixer.Accounts.User do
     policy action_type(:read) do
       authorize_if always()
     end
+
+    policy action(:update_profile) do
+      authorize_if expr(id == ^actor(:id))
+    end
+
+    policy action(:update_avatar) do
+      authorize_if expr(id == ^actor(:id))
+    end
   end
 
   attributes do
@@ -308,6 +375,23 @@ defmodule Mixer.Accounts.User do
     end
 
     attribute :confirmed_at, :utc_datetime_usec
+
+    attribute :username, :string do
+      public? true
+
+      constraints match: ~r/^[a-zA-Z0-9_]+$/,
+                  min_length: 3,
+                  max_length: 30
+    end
+
+    attribute :display_name, :string do
+      public? true
+      constraints max_length: 50
+    end
+
+    attribute :avatar_url, :string do
+      public? true
+    end
   end
 
   relationships do
@@ -350,5 +434,6 @@ defmodule Mixer.Accounts.User do
 
   identities do
     identity :unique_email, [:email]
+    identity :unique_username, [:username], nils_distinct?: true
   end
 end

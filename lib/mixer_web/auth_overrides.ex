@@ -15,4 +15,9 @@ defmodule MixerWeb.AuthOverrides do
     set :text, "⬡ Mixer"
     set :text_class, "text-3xl font-bold tracking-tight"
   end
+
+  # Inject the username field into the password registration form
+  override AshAuthentication.Phoenix.Components.Password do
+    set :register_extra_component, &MixerWeb.AuthComponents.username_register_field/1
+  end
 end

@@ -47,6 +47,7 @@ defmodule MixerWeb.Router do
     post "/rpc/run", AshTypescriptRpcController, :run
     post "/rpc/validate", AshTypescriptRpcController, :validate
     post "/upload", UploadController, :create
+    post "/upload/avatar", UploadController, :upload_avatar
     auth_routes AuthController, Mixer.Accounts.User, path: "/auth"
     sign_out_route AuthController
 
@@ -74,6 +75,7 @@ defmodule MixerWeb.Router do
 
     # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(Mixer.Accounts.User, :magic_link,
+      live_view: MixerWeb.MagicSignInLive,
       auth_routes_prefix: "/auth",
       overrides: [MixerWeb.AuthOverrides, Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI]
     )

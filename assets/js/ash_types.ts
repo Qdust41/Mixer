@@ -25,9 +25,12 @@ export type followsAttributesOnlySchema = {
 // users Schema
 export type usersResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "email" | "followerCount" | "followingCount" | "amIFollowing" | "myFollowId";
+  __primitiveFields: "id" | "email" | "username" | "displayName" | "avatarUrl" | "followerCount" | "followingCount" | "amIFollowing" | "myFollowId";
   id: UUID;
   email: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
   followerCount: number;
   followingCount: number;
   amIFollowing: boolean;
@@ -38,9 +41,12 @@ export type usersResourceSchema = {
 
 export type usersAttributesOnlySchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "email";
+  __primitiveFields: "id" | "email" | "username" | "displayName" | "avatarUrl";
   id: UUID;
   email: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
 };
 
 
@@ -71,7 +77,7 @@ export type mediaAttributesOnlySchema = {
 // tweets Schema
 export type tweetsResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "parentTweetId" | "commentCount" | "likedByMe" | "userEmail";
+  __primitiveFields: "id" | "content" | "likes" | "userId" | "insertedAt" | "state" | "parentTweetId" | "commentCount" | "likedByMe" | "userEmail" | "userUsername" | "userDisplayName" | "userAvatarUrl";
   id: UUID;
   content: string;
   likes: number;
@@ -82,6 +88,9 @@ export type tweetsResourceSchema = {
   commentCount: number;
   likedByMe: boolean;
   userEmail: string | null;
+  userUsername: string | null;
+  userDisplayName: string | null;
+  userAvatarUrl: string | null;
   user: { __type: "Relationship"; __resource: usersResourceSchema; };
   parentTweet: { __type: "Relationship"; __resource: tweetsResourceSchema | null; };
   comments: { __type: "Relationship"; __array: true; __resource: tweetsResourceSchema; };
@@ -132,6 +141,27 @@ export type usersFilterInput = {
     eq?: string;
     notEq?: string;
     in?: Array<string>;
+  };
+
+  username?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
+  };
+
+  displayName?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
+  };
+
+  avatarUrl?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
   };
 
   followerCount?: {
@@ -270,6 +300,27 @@ export type tweetsFilterInput = {
     isNil?: boolean;
   };
 
+  userUsername?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
+  };
+
+  userDisplayName?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
+  };
+
+  userAvatarUrl?: {
+    eq?: string;
+    notEq?: string;
+    in?: Array<string>;
+    isNil?: boolean;
+  };
+
   commentCount?: {
     eq?: number;
     notEq?: number;
@@ -301,26 +352,26 @@ export type tweetsFilterInput = {
 export const followsFilterFields = ["id"] as const;
 export type followsFilterField = (typeof followsFilterFields)[number];
 
-export const usersFilterFields = ["id", "email", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
+export const usersFilterFields = ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
 export type usersFilterField = (typeof usersFilterFields)[number];
 
 export const mediaFilterFields = ["id", "s3Key", "userId", "tweetId", "user", "tweet"] as const;
 export type mediaFilterField = (typeof mediaFilterFields)[number];
 
-export const tweetsFilterFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "commentCount", "likedByMe", "user", "parentTweet", "comments", "media"] as const;
+export const tweetsFilterFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "commentCount", "likedByMe", "user", "parentTweet", "comments", "media"] as const;
 export type tweetsFilterField = (typeof tweetsFilterFields)[number];
 
 
 export const followsSortFields = ["id"] as const;
 export type followsSortField = (typeof followsSortFields)[number];
 
-export const usersSortFields = ["id", "email", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
+export const usersSortFields = ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing", "myFollowId"] as const;
 export type usersSortField = (typeof usersSortFields)[number];
 
 export const mediaSortFields = ["id", "s3Key", "userId", "tweetId"] as const;
 export type mediaSortField = (typeof mediaSortFields)[number];
 
-export const tweetsSortFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "commentCount", "likedByMe"] as const;
+export const tweetsSortFields = ["id", "content", "likes", "userId", "insertedAt", "state", "parentTweetId", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "commentCount", "likedByMe"] as const;
 export type tweetsSortField = (typeof tweetsSortFields)[number];
 
 

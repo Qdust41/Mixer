@@ -9,6 +9,29 @@ export interface UploadError {
   error: string;
 }
 
+export interface AvatarUploadResult {
+  success: true;
+  avatarUrl: string;
+}
+
+export async function uploadAvatar(
+  file: File,
+  csrfToken: string
+): Promise<AvatarUploadResult | UploadError> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/upload/avatar", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: formData,
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    return { error: json.error ?? "Upload failed" };
+  }
+  return json as AvatarUploadResult;
+}
+
 export async function uploadFile(
   file: File,
   csrfToken: string

@@ -4,6 +4,7 @@ defmodule Mixer.Accounts do
   typescript_rpc do
     resource Mixer.Accounts.User do
       rpc_action :read_user, :read
+      rpc_action :update_profile, :update_profile
     end
 
     resource Mixer.Accounts.Follow do

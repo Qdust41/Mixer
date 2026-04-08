@@ -2,6 +2,11 @@
   id="app"
   data-current-user-id={if @current_user, do: @current_user.id, else: ""}
   data-current-user-email={if @current_user, do: @current_user.email, else: ""}
+  data-current-user-username={if @current_user, do: @current_user.username || "", else: ""}
+  data-current-user-display-name={
+    if @current_user, do: @current_user.display_name || "", else: ""
+  }
+  data-current-user-avatar-url={if @current_user, do: @current_user.avatar_url || "", else: ""}
   data-asset-host={@media_host}
   data-page={@page}
   data-tweet-id={@tweet_id || ""}

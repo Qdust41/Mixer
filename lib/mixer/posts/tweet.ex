@@ -254,6 +254,18 @@ defmodule Mixer.Posts.Tweet do
     calculate :user_email, :string, expr(user.email) do
       public? true
     end
+
+    calculate :user_username, :string, expr(user.username) do
+      public? true
+    end
+
+    calculate :user_display_name, :string, expr(user.display_name) do
+      public? true
+    end
+
+    calculate :user_avatar_url, :string, expr(user.avatar_url) do
+      public? true
+    end
   end
 
   aggregates do

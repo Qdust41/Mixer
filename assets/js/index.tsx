@@ -17,12 +17,13 @@ import {
   likeTweet,
   unlikeTweet,
   updateTweet,
+  updateProfile,
   readUser,
   followUser,
   unfollowUser,
   buildCSRFHeaders,
 } from "./ash_rpc";
-import { uploadFile } from "./upload";
+import { uploadFile, uploadAvatar } from "./upload";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000 } },
@@ -33,6 +34,9 @@ const queryClient = new QueryClient({
 type User = {
   id: string;
   email: string;
+  username?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   followerCount?: number;
   followingCount?: number;
   amIFollowing?: boolean;
@@ -50,12 +54,21 @@ type Tweet = {
   state: string;
   media?: MediaItem[];
   userEmail?: string | null;
+  userUsername?: string | null;
+  userDisplayName?: string | null;
+  userAvatarUrl?: string | null;
   insertedAt?: string | null;
 };
 
 // ── Auth context ───────────────────────────────────────────────────────────────
 
-const AuthCtx = createContext({ email: "", userId: "" });
+const AuthCtx = createContext({
+  email: "",
+  userId: "",
+  username: "",
+  displayName: "",
+  avatarUrl: "",
+});
 
 // ── Responsive helper ─────────────────────────────────────────────────────────
 // Returns true when the viewport is wider than 960 px (desktop layout).
@@ -100,6 +113,54 @@ function timeAgo(insertedAt?: string | null): string {
 function getAssetHost(): string {
   const appEl = document.getElementById("app");
   return appEl?.dataset.assetHost ?? "http://localhost:9000";
+}
+
+// ── Display-name helpers ─────────────────────────────────────────────
+
+function userDisplayLabel(u: {
+  displayName?: string | null;
+  username?: string | null;
+  email?: string | null;
+}): string {
+  return u.displayName || u.username || u.email || "@mixer";
+}
+
+function userHandle(u: { username?: string | null; email?: string | null }): string {
+  return u.username ? `@${u.username}` : u.email ?? "@mixer";
+}
+
+// ── Avatar ───────────────────────────────────────────────────────────────
+
+function Avatar({
+  avatarUrl,
+  name,
+  size = "md",
+}: {
+  avatarUrl?: string | null;
+  name?: string | null;
+  size?: "sm" | "md" | "lg";
+}) {
+  const assetHost = getAssetHost();
+  const initial = ((name ?? "")[0] || "M").toUpperCase();
+  const cls = size === "sm"
+    ? "mx-tweet-avatar mx-tweet-avatar--sm"
+    : size === "lg"
+    ? "mx-tweet-avatar mx-tweet-avatar--lg"
+    : "mx-tweet-avatar";
+
+  return (
+    <div className={cls}>
+      {avatarUrl ? (
+        <img
+          src={`${assetHost}/${avatarUrl}`}
+          alt={name ?? "avatar"}
+          className="mx-avatar-img"
+        />
+      ) : (
+        <span>{initial}</span>
+      )}
+    </div>
+  );
 }
 
 // ── Context menu ──────────────────────────────────────────────────────────────
@@ -203,6 +264,7 @@ function CharCount({ current, max }: { current: number; max: number }) {
 }
 
 function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
+  const { username, displayName, email, avatarUrl } = useContext(AuthCtx);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -304,9 +366,7 @@ function ComposeTweet({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <div className="mx-compose">
-      <div className="mx-compose-avatar">
-        <span>M</span>
-      </div>
+      <Avatar avatarUrl={avatarUrl} name={displayName || username || email} />
       <div className="mx-compose-body">
         <textarea
           ref={textareaRef}
@@ -546,12 +606,13 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
       onClick={() => { window.location.href = `/feed/${tweet.id}`; }}
       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
     >
-      <div className="mx-tweet-avatar">
-        <span>M</span>
-      </div>
+      <Avatar avatarUrl={tweet.userAvatarUrl} name={tweet.userDisplayName || tweet.userUsername || tweet.userEmail} />
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
-          <span className="mx-tweet-handle">{tweet.userEmail ?? "@mixer"}</span>
+          <span className="mx-tweet-handle">{userDisplayLabel({ displayName: tweet.userDisplayName, username: tweet.userUsername, email: tweet.userEmail })}</span>
+          {tweet.userUsername && (
+            <span className="mx-tweet-subhandle">@{tweet.userUsername}</span>
+          )}
           <span className="mx-tweet-dot">·</span>
           <span className="mx-tweet-time" title={tweet.insertedAt ? new Date(tweet.insertedAt).toLocaleString() : undefined}>{timeAgo(tweet.insertedAt)}</span>
           {canModify && (
@@ -754,11 +815,11 @@ function ComposeComment({ parentTweetId, onSuccess }: { parentTweetId: string; o
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
+  const { username, displayName, email, avatarUrl } = useContext(AuthCtx);
+
   return (
     <div className="mx-compose mx-compose--comment">
-      <div className="mx-compose-avatar mx-compose-avatar--sm">
-        <span>M</span>
-      </div>
+      <Avatar avatarUrl={avatarUrl} name={displayName || username || email} size="sm" />
       <div className="mx-compose-body">
         <textarea
           ref={textareaRef}
@@ -803,7 +864,7 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
     queryKey: ["tweet", tweetId],
     queryFn: async () => {
       const res = await readTweet({
-        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "insertedAt", { media: ["id", "s3Key"] }],
         filter: { id: { eq: tweetId } },
         headers: buildCSRFHeaders(),
       });
@@ -825,7 +886,7 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
     queryKey: ["comments", tweetId],
     queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readTweet({
-        fields: ["id", "content", "likes", "likedByMe", "parentTweetId", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        fields: ["id", "content", "likes", "likedByMe", "parentTweetId", "userId", "state", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "insertedAt", { media: ["id", "s3Key"] }],
         filter: { parentTweetId: { eq: tweetId } },
         sort: "insertedAt",
         page: { limit: COMMENTS_PAGE_SIZE, offset: pageParam },
@@ -950,10 +1011,13 @@ function TweetDetail({ tweetId }: { tweetId: string }) {
 
       <div className="mx-detail-body">
         <div className="mx-detail-author">
-          <div className="mx-tweet-avatar">
-            <span>M</span>
+          <Avatar avatarUrl={tweet.userAvatarUrl} name={tweet.userDisplayName || tweet.userUsername || tweet.userEmail} />
+          <div>
+            <span className="mx-tweet-handle">{userDisplayLabel({ displayName: tweet.userDisplayName, username: tweet.userUsername, email: tweet.userEmail })}</span>
+            {tweet.userUsername && (
+              <div style={{ fontSize: "0.8rem", color: "var(--mx-muted)" }}>@{tweet.userUsername}</div>
+            )}
           </div>
-          <span className="mx-tweet-handle">{tweet.userEmail ?? "@mixer"}</span>
         </div>
 
         {editing ? (
@@ -1091,12 +1155,13 @@ function CommentCard({ comment, parentTweetOwnerId }: { comment: Tweet; parentTw
 
   return (
     <article className="mx-tweet mx-comment">
-      <div className="mx-tweet-avatar mx-tweet-avatar--sm">
-        <span>M</span>
-      </div>
+      <Avatar avatarUrl={comment.userAvatarUrl} name={comment.userDisplayName || comment.userUsername || comment.userEmail} size="sm" />
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
-          <span className="mx-tweet-handle">{comment.userEmail ?? "@mixer"}</span>
+          <span className="mx-tweet-handle">{userDisplayLabel({ displayName: comment.userDisplayName, username: comment.userUsername, email: comment.userEmail })}</span>
+          {comment.userUsername && (
+            <span className="mx-tweet-subhandle">@{comment.userUsername}</span>
+          )}
           <span className="mx-tweet-dot">·</span>
           <span className="mx-tweet-time" title={comment.insertedAt ? new Date(comment.insertedAt).toLocaleString() : undefined}>{timeAgo(comment.insertedAt)}</span>
           {canModify && (
@@ -1169,7 +1234,7 @@ function FollowingFeed() {
     queryKey: ["following_tweets"],
     queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readFollowingFeed({
-        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "insertedAt", { media: ["id", "s3Key"] }],
         sort: "-insertedAt",
         page: { limit: FEED_PAGE_SIZE, offset: pageParam },
         filter: { parentTweetId: { isNil: true } },
@@ -1263,7 +1328,7 @@ function Feed() {
     queryKey: ["tweets"],
     queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readTweet({
-        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "insertedAt", { media: ["id", "s3Key"] }],
+        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "insertedAt", { media: ["id", "s3Key"] }],
         sort: "-insertedAt",
         page: { limit: FEED_PAGE_SIZE, offset: pageParam },
         filter: { parentTweetId: { isNil: true } },
@@ -1428,12 +1493,13 @@ function UserCard({ user }: { user: User }) {
       onClick={() => { window.location.href = `/users/${user.id}`; }}
       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
     >
-      <div className="mx-tweet-avatar">
-        <span>M</span>
-      </div>
+      <Avatar avatarUrl={user.avatarUrl} name={user.displayName || user.username || user.email} />
       <div className="mx-tweet-body">
         <div className="mx-tweet-header">
-          <span className="mx-tweet-handle">{user.email}</span>
+          <span className="mx-tweet-handle">{userDisplayLabel(user)}</span>
+          {user.username && (
+            <span className="mx-tweet-subhandle">@{user.username}</span>
+          )}
         </div>
         {(user.followerCount !== undefined || user.followingCount !== undefined) && (
           <div className="mx-tweet-meta" style={{ fontSize: "0.8rem", color: "var(--mx-muted)", marginTop: "4px" }}>
@@ -1459,7 +1525,7 @@ function UserList() {
     queryKey: ["users"],
     queryFn: async () => {
       const res = await readUser({
-        fields: ["id", "email", "followerCount", "followingCount", "amIFollowing"],
+        fields: ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing"],
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load users");
@@ -1499,7 +1565,7 @@ function UserDetail({ userId, isStandalone = false }: { userId: string; isStanda
     queryKey: ["user", userId],
     queryFn: async () => {
       const res = await readUser({
-        fields: ["id", "email", "followerCount", "followingCount", "amIFollowing"],
+        fields: ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing"],
         filter: { id: { eq: userId } },
         headers: buildCSRFHeaders(),
       });
@@ -1530,27 +1596,212 @@ function UserDetail({ userId, isStandalone = false }: { userId: string; isStanda
       )}
       <div className="mx-detail-body">
         <div className="mx-detail-author">
-          <div className="mx-tweet-avatar mx-tweet-avatar--lg">
-            <span>{user.email?.[0]?.toUpperCase() ?? "M"}</span>
-          </div>
+          <Avatar avatarUrl={user.avatarUrl} name={user.displayName || user.username || user.email} size="lg" />
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <span className="mx-tweet-handle">{user.email}</span>
+              <div>
+                <div className="mx-tweet-handle" style={{ fontSize: "1.1rem" }}>{userDisplayLabel(user)}</div>
+                {user.username && (
+                  <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)" }}>@{user.username}</div>
+                )}
+              </div>
               {canFollow && (
                 <FollowButton amIFollowing={amIFollowing} isPending={isPending} onToggle={amIFollowing ? unfollow : follow} />
               )}
-              {isOwnProfile && isStandalone && (
-                <a href="/sign-out" className="mx-btn-cancel" style={{ textDecoration: "none", fontSize: "0.8rem" }}>
-                  Sign out
-                </a>
-              )}
             </div>
-            <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)", marginTop: "6px", display: "flex", gap: "16px" }}>
-              <span><strong>{user.followerCount ?? 0}</strong> followers</span>
-              <span><strong>{user.followingCount ?? 0}</strong> following</span>
+            <div style={{ fontSize: "0.85rem", color: "var(--mx-muted)", marginTop: "8px", display: "flex", gap: "16px" }}>
+              <span><strong style={{ color: "var(--mx-fg)" }}>{user.followerCount ?? 0}</strong> followers</span>
+              <span><strong style={{ color: "var(--mx-fg)" }}>{user.followingCount ?? 0}</strong> following</span>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileEditor({ userId }: { userId: string }) {
+  const assetHost = getAssetHost();
+  const qc = useQueryClient();
+
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["user", userId],
+    queryFn: async () => {
+      const res = await readUser({
+        fields: ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing"],
+        filter: { id: { eq: userId } },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load user");
+      const results = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
+      return (results[0] as User) ?? null;
+    },
+  });
+
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync form fields when user data loads
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username ?? "");
+      setDisplayName(user.displayName ?? "");
+    }
+  }, [user?.id]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await updateProfile({
+        identity: userId,
+        input: {
+          username: username.trim() || null,
+          displayName: displayName.trim() || null,
+        },
+        fields: ["id", "username", "displayName", "avatarUrl"],
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error((res.errors?.[0] as any)?.message ?? "Save failed");
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user", userId] });
+      setSaveSuccess(true);
+      setSaveError(null);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    },
+    onError: (e: Error) => setSaveError(e.message),
+  });
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (previewAvatarUrl) URL.revokeObjectURL(previewAvatarUrl);
+    setPreviewAvatarUrl(URL.createObjectURL(file));
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const csrfToken = buildCSRFHeaders()["X-CSRF-Token"] as string;
+    const result = await uploadAvatar(file, csrfToken);
+    setAvatarUploading(false);
+    if ("error" in result) {
+      setAvatarError(result.error);
+      if (previewAvatarUrl) URL.revokeObjectURL(previewAvatarUrl);
+      setPreviewAvatarUrl(null);
+    } else {
+      qc.invalidateQueries({ queryKey: ["user", userId] });
+    }
+  }
+
+  if (isLoading || !user) return <Spinner />;
+
+  const currentAvatarUrl = previewAvatarUrl
+    ? previewAvatarUrl
+    : user.avatarUrl
+    ? `${assetHost}/${user.avatarUrl}`
+    : null;
+
+  return (
+    <div className="mx-profile-editor">
+      {/* Avatar section */}
+      <div className="mx-profile-avatar-section">
+        <div className="mx-profile-avatar-wrap">
+          {currentAvatarUrl ? (
+            <img src={currentAvatarUrl} alt="Your avatar" className="mx-profile-avatar-img" />
+          ) : (
+            <div className="mx-profile-avatar-placeholder">
+              <span>{(user.displayName || user.username || user.email || "M")[0].toUpperCase()}</span>
+            </div>
+          )}
+          <button
+            className="mx-profile-avatar-edit-btn"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarUploading}
+            title="Change avatar"
+          >
+            {avatarUploading ? (
+              <div className="mx-spinner" style={{ width: "14px", height: "14px", borderWidth: "2px" }} />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.04a1 1 0 0 0 0-1.41l-2.31-2.31a1 1 0 0 0-1.41 0l-1.79 1.79 3.75 3.75 1.76-1.82z" />
+              </svg>
+            )}
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleAvatarChange}
+          />
+        </div>
+        {avatarError && <p className="mx-compose-error" style={{ marginTop: "0.5rem" }}>{avatarError}</p>}
+      </div>
+
+      {/* Stats row */}
+      <div className="mx-profile-stats">
+        <span><strong>{user.followerCount ?? 0}</strong> followers</span>
+        <span><strong>{user.followingCount ?? 0}</strong> following</span>
+      </div>
+
+      {/* Email (read-only) */}
+      <div className="mx-profile-field">
+        <label className="mx-profile-label">Email</label>
+        <input
+          type="text"
+          className="mx-profile-input mx-profile-input--readonly"
+          value={String(user.email)}
+          readOnly
+        />
+      </div>
+
+      {/* Display name */}
+      <div className="mx-profile-field">
+        <label className="mx-profile-label">Display name</label>
+        <input
+          type="text"
+          className="mx-profile-input"
+          placeholder="Your display name"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          maxLength={50}
+        />
+      </div>
+
+      {/* Username */}
+      <div className="mx-profile-field">
+        <label className="mx-profile-label">Username</label>
+        <div className="mx-profile-input-wrap">
+          <span className="mx-profile-at">@</span>
+          <input
+            type="text"
+            className="mx-profile-input mx-profile-input--handle"
+            placeholder="your_handle"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+            maxLength={30}
+          />
+        </div>
+        <p className="mx-profile-hint">3–30 characters. Letters, numbers, underscores only.</p>
+      </div>
+
+      {saveError && <p className="mx-compose-error">{saveError}</p>}
+      {saveSuccess && <p style={{ fontSize: "0.8rem", color: "var(--mx-green)", marginBottom: "0.5rem" }}>✓ Saved!</p>}
+
+      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+        <button
+          className="mx-btn-post"
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+        >
+          {saveMutation.isPending ? "Saving…" : "Save changes"}
+        </button>
+        <a href="/sign-out" className="mx-btn-cancel" style={{ textDecoration: "none" }}>Sign out</a>
       </div>
     </div>
   );
@@ -1572,7 +1823,7 @@ function MyProfile() {
     );
   }
 
-  return <UserDetail userId={userId} isStandalone />;
+  return <ProfileEditor userId={userId} />;
 }
 
 // ── Mobile bottom nav ─────────────────────────────────────────────────────────
@@ -1691,6 +1942,9 @@ function App() {
   const appEl = document.getElementById("app")!;
   const email = appEl.dataset.currentUserEmail ?? "";
   const userId = appEl.dataset.currentUserId ?? "";
+  const username = appEl.dataset.currentUserUsername ?? "";
+  const displayName = appEl.dataset.currentUserDisplayName ?? "";
+  const avatarUrl = appEl.dataset.currentUserAvatarUrl ?? "";
   const tweetId = appEl.dataset.tweetId || null;
   const page = appEl.dataset.page ?? "feed";
   const profileUserId = appEl.dataset.userId || null;
@@ -1779,7 +2033,7 @@ function App() {
   }
 
   return (
-    <AuthCtx.Provider value={{ email, userId }}>
+    <AuthCtx.Provider value={{ email, userId, username, displayName, avatarUrl }}>
       <QueryClientProvider client={queryClient}>
         <div className="mx-root">
           {isDesktop && (
@@ -1817,7 +2071,12 @@ function App() {
               <div className="mx-sidebar-footer">
                 {email ? (
                   <>
-                    <span className="mx-version" style={{ color: "var(--mx-fg2)" }}>{email}</span>
+                    <span className="mx-version" style={{ color: "var(--mx-fg2)" }}>
+                      {displayName || username || email}
+                    </span>
+                    {username && (
+                      <span className="mx-version">@{username}</span>
+                    )}
                     <a className="mx-auth-link" href="/sign-out">Sign out</a>
                   </>
                 ) : (

@@ -93,11 +93,15 @@ defmodule Mixer.Posts.TweetLikeTest do
   end
 
   defp user_fixture(email) do
+    username =
+      email |> String.split("@") |> List.first() |> String.replace(~r/[^a-zA-Z0-9_]/, "_")
+
     User
     |> Ash.Changeset.for_create(:register_with_password, %{
       email: email,
       password: "password1234",
-      password_confirmation: "password1234"
+      password_confirmation: "password1234",
+      username: username
     })
     |> Ash.create!()
   end
