@@ -434,6 +434,10 @@ defmodule Mixer.Accounts.User do
 
   identities do
     identity :unique_email, [:email]
-    identity :unique_username, [:username], nils_distinct?: true
+    identity :unique_username, [:username] do
+      eager_check_with Mixer.Accounts
+      message "is already taken"
+      nils_distinct? true
+    end
   end
 end

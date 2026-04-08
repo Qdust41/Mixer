@@ -37,7 +37,7 @@ defmodule MixerWeb.MagicSignInLive do
     domain = Info.authentication_domain!(resource)
 
     # Determine whether this user needs to pick a username
-    needs_username? = needs_username?(token, resource)
+    needs_username? = needs_username?(token, resource, domain)
 
     form =
       resource
@@ -75,70 +75,26 @@ defmodule MixerWeb.MagicSignInLive do
   @spec render(Socket.assigns()) :: Rendered.t()
   def render(assigns) do
     ~H"""
-    <div class={override_for(@overrides, :root_class)}>
-      <.live_component
-        module={AshAuthentication.Phoenix.Components.Banner}
-        id="magic-sign-in-banner"
-        overrides={@overrides}
-      />
+    <div class="min-h-screen flex flex-col items-center justify-center bg-base-100 p-4">
+      <div class="w-full max-w-sm mb-8 text-center">
+        <.live_component
+          module={AshAuthentication.Phoenix.Components.Banner}
+          id="magic-sign-in-banner"
+          overrides={@overrides}
+        />
+      </div>
 
-      <div style="max-width: 400px; margin: 0 auto; padding: 1rem;">
-        <.form
-          :let={form}
-          for={@form}
-          phx-submit="submit"
-          phx-trigger-action={@trigger_action}
-          action={
-            auth_path(
-              @socket,
-              @subject_name,
-              @auth_routes_prefix,
-              @strategy,
-              :sign_in
-            )
-          }
-          method="POST"
-        >
+      <div class="w-full max-w-sm p-6 bg-base-100 border border-base-200 rounded-xl shadow-sm">
+        <.form :let={form} for={@form} phx-change="validate" phx-submit="submit" phx-trigger-action={@trigger_action}
+          action={auth_path(@socket, @subject_name, @auth_routes_prefix, @strategy, :sign_in)}
+          method="POST">
+
           {hidden_input(form, :token, [])}
 
-          <%!-- Username field — only shown for new or username-less users --%>
-          <div :if={@needs_username?} class="mt-2 mb-4">
-            <label
-              for={form[:username].id}
-              class="block text-sm font-medium text-base-content mb-1"
-            >
-              Choose a username
-            </label>
-            <div class="flex">
-              <span class="input rounded-r-none border-r-0 text-base-content/50 select-none">
-                @
-              </span>
-              <input
-                type="text"
-                id={form[:username].id}
-                name={form[:username].name}
-                value={form[:username].value || ""}
-                class={"input w-full rounded-l-none #{if form[:username].errors != [], do: "input-error", else: ""}"}
-                placeholder="your_handle"
-                autocomplete="username"
-                required
-              />
-            </div>
-            <p
-              :if={form[:username].errors != []}
-              class="mt-1 text-xs text-error"
-            >
-              {form[:username].errors |> List.first() |> elem(0)}
-            </p>
-            <p :if={form[:username].errors == []} class="mt-1 text-xs text-base-content/50">
-              3–30 characters · letters, numbers, underscores
-            </p>
-          </div>
+          <%!-- Using the unified component --%>
+          <MixerWeb.AuthComponents.username_field :if={@needs_username?} form={form} />
 
-          {submit("Sign in",
-            class: "btn btn-primary w-full mt-2",
-            phx_disable_with: "Signing in…"
-          )}
+          {submit("Sign in", class: "btn btn-primary w-full", phx_disable_with: "Signing in...")}
         </.form>
       </div>
     </div>
@@ -156,28 +112,43 @@ defmodule MixerWeb.MagicSignInLive do
 
     form_params = Map.get(params, subject_name, %{})
 
-    form = Form.validate(socket.assigns.form, form_params)
+    # Use Form.validate with :all_errors to surface uniqueness constraints
+    form =
+      socket.assigns.form
+      |> Form.validate(form_params, errors: true)
 
-    socket =
-      socket
-      |> assign(:form, form)
-      |> assign(:trigger_action, form.valid?)
+    if form.valid? do
+      # Only trigger the POST redirect if the data is truly valid
+      {:noreply, assign(socket, form: form, trigger_action: true)}
+    else
+      socket =
+        socket
+        |> assign(form: form, trigger_action: false)
+      {:noreply, socket}
+    end
+  end
 
-    {:noreply, socket}
+  @impl true
+  def handle_event("validate", params, socket) do
+    subject_name = socket.assigns.subject_name |> to_string() |> slugify()
+    form_params = Map.get(params, subject_name, %{})
+
+    form = Form.validate(socket.assigns.form, form_params, errors: true)
+    {:noreply, assign(socket, form: form)}
   end
 
   # ── Helpers ──────────────────────────────────────────────────────────────────
 
   # Returns true if the user is new or has no username set yet.
-  defp needs_username?(nil, _resource), do: true
+  defp needs_username?(nil, _resource, _domain), do: true
 
-  defp needs_username?(token, resource) do
+  defp needs_username?(token, resource, domain) do
     with {:ok, claims} <- AshAuthentication.Jwt.peek(token),
          # 1. Try to find an existing user from the claims
-         user <- find_user(claims, resource),
+         user <- find_user(claims, resource, domain),
          # 2. If a user exists, check if they already have a username
          false <- is_nil(user) do
-      is_nil(user.username)
+      is_nil(user.username) or user.username == ""
     else
       _ ->
         # Unknown / new user — ask for username to be safe
@@ -185,7 +156,7 @@ defmodule MixerWeb.MagicSignInLive do
     end
   end
 
-  defp find_user(claims, resource) do
+  defp find_user(claims, resource, domain) do
     # Try 'sub' first if it looks like a user subject (e.g. "User:123")
     sub = Map.get(claims, "sub")
 
@@ -201,7 +172,11 @@ defmodule MixerWeb.MagicSignInLive do
     user ||
       case Map.get(claims, "identity") || Map.get(claims, "email") do
         email when is_binary(email) ->
-          case Ash.get(resource, [email: email], action: :get_by_email, authorize?: false) do
+          # Use for_read with the explicit action and arguments
+          resource
+          |> Ash.Query.for_read(:get_by_email, %{email: email})
+          |> Ash.read_one(domain: domain, authorize?: false)
+          |> case do
             {:ok, user} -> user
             _ -> nil
           end

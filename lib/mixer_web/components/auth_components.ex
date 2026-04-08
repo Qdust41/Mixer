@@ -11,7 +11,7 @@ defmodule MixerWeb.AuthComponents do
   Receives `form` (an `AshPhoenix.Form`) as an assign via the
   `register_extra_component` override.
   """
-  def username_register_field(assigns) do
+  def username_field(assigns) do
     field = assigns.form[:username]
 
     assigns =
@@ -27,7 +27,7 @@ defmodule MixerWeb.AuthComponents do
         Username
       </label>
       <div class="flex">
-        <span class="input rounded-r-none border-r-0 text-base-content/50 select-none">@</span>
+        <span class="flex items-center justify-center px-4 bg-base-200 border border-base-300 border-r-0 rounded-l-lg text-base-content/50 select-none">@</span>
         <input
           type="text"
           id={@field_id}
@@ -35,17 +35,21 @@ defmodule MixerWeb.AuthComponents do
           value={@field_value}
           class={"input w-full rounded-l-none #{if @field_errors != [], do: "input-error", else: ""}"}
           placeholder="your_handle"
-          autocomplete="username"
           required
         />
       </div>
-      <p :if={@field_errors != []} class="mt-1 text-xs text-error">
-        {@field_errors |> List.first() |> elem(0)}
-      </p>
-      <p :if={@field_errors == []} class="mt-1 text-xs text-base-content/50">
-        3–30 characters · letters, numbers, underscores
+      <p :for={error <- @field_errors} class="mt-1 text-xs text-error">
+        {translate_error(error)}
       </p>
     </div>
     """
+  end
+
+  def translate_error({msg, opts}) do
+    if count = opts[:count] do
+      Gettext.dngettext(MixerWeb.Gettext, "errors", msg, msg, count, opts)
+    else
+      Gettext.dgettext(MixerWeb.Gettext, "errors", msg, opts)
+    end
   end
 end

@@ -18,6 +18,6 @@ defmodule MixerWeb.AuthOverrides do
 
   # Inject the username field into the password registration form
   override AshAuthentication.Phoenix.Components.Password do
-    set :register_extra_component, &MixerWeb.AuthComponents.username_register_field/1
+    set :register_extra_component, &MixerWeb.AuthComponents.username_field/1
   end
 end
