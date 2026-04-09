@@ -306,17 +306,22 @@ defmodule Mixer.Accounts.User do
             changeset
 
           username ->
+            # Set the attribute directly so the unique_username identity's
+            # eager_check_with fires during Form.validate, surfacing "already
+            # taken" errors in the UI before the action is submitted.
+            changeset = Ash.Changeset.change_attribute(changeset, :username, username)
+
+            # Also update via after_action to handle existing users who have no
+            # username yet: for upserts, only upsert_fields are applied to the
+            # conflicting row, so change_attribute above won't touch them.
             Ash.Changeset.after_action(changeset, fn _cs, user ->
               if is_nil(user.username) do
                 user
-                |> Ash.Changeset.for_update(:update_profile, %{username: username},
-                  authorize?: false
-                )
+                |> Ash.Changeset.for_update(:update_profile, %{username: username},authorize?: false)
                 |> Ash.update()
                 |> case do
                   {:ok, updated} -> {:ok, updated}
-                  # Don't fail the sign-in just because username set failed
-                  {:error, _} -> {:ok, user}
+                  {:error, error} -> {:error, error}
                 end
               else
                 {:ok, user}
