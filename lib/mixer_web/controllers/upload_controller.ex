@@ -62,8 +62,10 @@ defmodule MixerWeb.UploadController do
 
       case AvatarUploader.store({upload, scope}) do
         {:ok, _file_name} ->
-          # The thumb is always stored as avatars/:user_id/thumb.webp
-          thumb_key = "avatars/#{actor.id}/thumb.webp"
+          # The thumb is always stored as avatars/:user_id/thumb.webp.
+          # Append a timestamp so the browser doesn't serve a stale cached image
+          # when the user updates their avatar (the URL changes, S3 ignores the param).
+          thumb_key = "avatars/#{actor.id}/thumb.webp?v=#{System.system_time(:millisecond)}"
 
           actor
           |> Ash.Changeset.for_update(:update_avatar, %{avatar_url: thumb_key}, actor: actor)
