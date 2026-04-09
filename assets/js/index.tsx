@@ -1558,6 +1558,77 @@ function UserList() {
   );
 }
 
+function UserFeed({ userId }: { userId: string }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["user-tweets", userId],
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
+      const res = await readTweet({
+        fields: ["id", "content", "likes", "likedByMe", "commentCount", "userId", "state", "userEmail", "userUsername", "userDisplayName", "userAvatarUrl", "insertedAt", { media: ["id", "s3Key"] }],
+        sort: "-insertedAt",
+        page: { limit: FEED_PAGE_SIZE, offset: pageParam },
+        filter: { userId: { eq: userId }, parentTweetId: { isNil: true } },
+        headers: buildCSRFHeaders(),
+      });
+      if (!res.success) throw new Error("Failed to load tweets");
+      const pageData = res.data as any;
+      const tweets: Tweet[] = Array.isArray(pageData) ? pageData : (pageData?.results ?? []);
+      const hasMore: boolean = Array.isArray(pageData) ? false : (pageData?.hasMore ?? false);
+      return { tweets, hasMore, nextOffset: pageParam + FEED_PAGE_SIZE };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
+  });
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <ErrorBanner message={(error as Error)?.message ?? "Could not load posts"} />;
+
+  const tweets = data?.pages.flatMap((p) => p.tweets) ?? [];
+
+  if (tweets.length === 0) {
+    return (
+      <div className="mx-empty">
+        <div className="mx-empty-icon">◎</div>
+        <p className="mx-empty-title">No posts yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-feed">
+      {tweets.map((t) => (
+        <TweetCard key={t.id} tweet={t} />
+      ))}
+      <div ref={sentinelRef} style={{ height: "1px" }} />
+      {isFetchingNextPage && <Spinner />}
+    </div>
+  );
+}
+
 function UserDetail({ userId, isStandalone = false }: { userId: string; isStandalone?: boolean }) {
   const { userId: currentUserId } = useContext(AuthCtx);
   const { follow, unfollow, isPending } = useFollowUser(userId);
@@ -1616,6 +1687,7 @@ function UserDetail({ userId, isStandalone = false }: { userId: string; isStanda
           </div>
         </div>
       </div>
+      <UserFeed userId={userId} />
     </div>
   );
 }
