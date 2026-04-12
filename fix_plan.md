@@ -17,7 +17,9 @@
 - [ ] No CHECK constraint on `likes >= 0` at DB level (low priority, app logic prevents it)
 - [ ] `read :following_feed` — nil actor returns empty list (not a bug)
 - [ ] No search for users or tweets
-- [ ] Missing test coverage: comments, tweet creation, auth flows
+- [x] Tweet creation, update, delete, comment tests (13 tests)
+- [ ] Missing test coverage: auth flows
+- [ ] No pagination on user list (`/users`)
 
 ## Notes
 
