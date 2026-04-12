@@ -6,7 +6,9 @@ import { followUser, unfollowUser, buildCSRFHeaders } from "./ash_rpc";
 // Returns true when viewport is wider than 960px. Reacts to resize.
 
 const DESKTOP_MQ =
-  typeof window !== "undefined" ? window.matchMedia("(min-width: 961px)") : null;
+  typeof window !== "undefined"
+    ? window.matchMedia("(min-width: 961px)")
+    : null;
 
 function subscribe(cb: () => void) {
   DESKTOP_MQ?.addEventListener("change", cb);
@@ -32,7 +34,14 @@ export function useFollowUser(targetUserId: string) {
         input: { followingId: targetUserId },
         headers: buildCSRFHeaders(),
       });
-      if (!res.success) throw new Error((res.errors?.[0] as any)?.message ?? "Follow failed");
+      if (!res.success) {
+        const message =
+          "errors" in res && Array.isArray(res.errors)
+            ? (res.errors[0] as any)?.message
+            : "Follow failed";
+        throw new Error(message);
+      }
+      return res;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
@@ -46,7 +55,14 @@ export function useFollowUser(targetUserId: string) {
         input: { followingId: targetUserId },
         headers: buildCSRFHeaders(),
       });
-      if (!res.success) throw new Error((res.errors?.[0] as any)?.message ?? "Unfollow failed");
+      if (!res.success) {
+        const message =
+          "errors" in res && Array.isArray(res.errors)
+            ? (res.errors[0] as any)?.message
+            : "Unfollow failed";
+        throw new Error(message);
+      }
+      return res;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
@@ -58,5 +74,6 @@ export function useFollowUser(targetUserId: string) {
     follow: () => followMutation.mutate(),
     unfollow: () => unfollowMutation.mutate(),
     isPending: followMutation.isPending || unfollowMutation.isPending,
+    error: followMutation.error || unfollowMutation.error,
   };
 }
