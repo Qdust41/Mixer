@@ -31,11 +31,11 @@ defmodule Mixer.Accounts.Follow do
       accept [:following_id]
       change relate_actor(:follower)
 
-      validate fn changeset, _context ->
-        follower_id = Ash.Changeset.get_attribute(changeset, :follower_id)
+      validate fn changeset, context ->
+        actor_id = context.actor && context.actor.id
         following_id = Ash.Changeset.get_attribute(changeset, :following_id)
 
-        if follower_id == following_id do
+        if actor_id && actor_id == following_id do
           {:error, field: :following_id, message: "You cannot follow yourself"}
         else
           :ok
