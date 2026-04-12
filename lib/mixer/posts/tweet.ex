@@ -127,7 +127,7 @@ defmodule Mixer.Posts.Tweet do
               increment_likes(tweet, context.actor)
 
             {:noop, _like} ->
-              {:ok, tweet}
+              Ash.get(__MODULE__, tweet.id, authorize?: false)
 
             {:error, error} ->
               {:error, error}

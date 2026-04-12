@@ -2,6 +2,7 @@ defmodule Mixer.Posts.TweetLikeTest do
   use Mixer.DataCase, async: true
 
   import Ash.Expr
+  require Ash.Query
 
   alias Mixer.Accounts.User
   alias Mixer.Posts.Tweet
@@ -24,14 +25,14 @@ defmodule Mixer.Posts.TweetLikeTest do
         Tweet
         |> Ash.get!(tweet.id, actor: user, load: [:liked_by_me], authorize?: false)
 
-      refute Ash.ForbiddenField.forbidden?(tweet_for_actor.liked_by_me)
+      refute match?(%Ash.ForbiddenField{}, tweet_for_actor.liked_by_me)
       assert tweet_for_actor.liked_by_me
 
       tweet_without_actor =
         Tweet
         |> Ash.get!(tweet.id, load: [:liked_by_me], authorize?: false)
 
-      refute Ash.ForbiddenField.forbidden?(tweet_without_actor.liked_by_me)
+      refute match?(%Ash.ForbiddenField{}, tweet_without_actor.liked_by_me)
       refute tweet_without_actor.liked_by_me
     end
 
@@ -103,7 +104,7 @@ defmodule Mixer.Posts.TweetLikeTest do
       password_confirmation: "password1234",
       username: username
     })
-    |> Ash.create!()
+    |> Ash.create!(authorize?: false)
   end
 
   defp tweet_fixture(user, content) do
