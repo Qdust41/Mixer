@@ -148,7 +148,7 @@ defmodule Mixer.Posts.Tweet do
               decrement_likes(tweet, context.actor)
 
             {:noop, _like} ->
-              {:ok, tweet}
+              Ash.get(__MODULE__, tweet.id, authorize?: false)
 
             {:error, error} ->
               {:error, error}
@@ -166,7 +166,7 @@ defmodule Mixer.Posts.Tweet do
     update :decrement_likes do
       accept []
       require_atomic? false
-      change atomic_update(:likes, expr(likes - 1))
+      change atomic_update(:likes, expr(fragment("GREATEST(? - 1, 0)", likes)))
     end
   end
 
