@@ -38,3 +38,6 @@ mixer-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Ralph code claude files
+/.ralph/
+.ralphrc
