@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useContext } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { readUser, readTweet, buildCSRFHeaders } from "../ash_rpc";
 import { AuthCtx } from "../context";
-import { FEED_PAGE_SIZE } from "../constants";
+import { FEED_PAGE_SIZE, USERS_PAGE_SIZE } from "../constants";
 import { userDisplayLabel } from "../utils";
 import { useFollowUser } from "../hooks";
 import { Spinner, ErrorBanner, Avatar, ContextMenu } from "./ui";
@@ -83,23 +83,54 @@ export function UserCard({ user }: { user: User }) {
 }
 
 export function UserList() {
-  const { data, isLoading, isError, error } = useQuery({
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["users"],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
       const res = await readUser({
         fields: ["id", "email", "username", "displayName", "avatarUrl", "followerCount", "followingCount", "amIFollowing"],
+        sort: "username",
+        page: { limit: USERS_PAGE_SIZE, offset: pageParam },
         headers: buildCSRFHeaders(),
       });
       if (!res.success) throw new Error("Failed to load users");
-      const users = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
-      return users as User[];
+      const pageData = res.data as any;
+      const users: User[] = Array.isArray(pageData) ? pageData : (pageData?.results ?? []);
+      const hasMore: boolean = Array.isArray(pageData) ? false : (pageData?.hasMore ?? false);
+      return { users, hasMore, nextOffset: pageParam + USERS_PAGE_SIZE };
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
   });
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (isLoading) return <Spinner />;
   if (isError) return <ErrorBanner message={(error as Error)?.message ?? "Could not load users"} />;
 
-  const users = data ?? [];
+  const users = data?.pages.flatMap((p) => p.users) ?? [];
 
   if (users.length === 0) {
     return (
@@ -116,6 +147,8 @@ export function UserList() {
       {users.map((u) => (
         <UserCard key={u.id} user={u} />
       ))}
+      <div ref={sentinelRef} style={{ height: "1px" }} />
+      {isFetchingNextPage && <Spinner />}
     </div>
   );
 }

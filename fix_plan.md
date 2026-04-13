@@ -13,13 +13,12 @@
 
 - [x] Self-follow validation used `get_attribute(:follower_id)` which is nil at validation time (relate_actor runs after) — fixed to use `context.actor.id`
 - [x] Follow/unfollow test coverage (9 tests)
-- [ ] No pagination on user list (`/users`)
+- [x] User list pagination — useInfiniteQuery + scroll sentinel, USERS_PAGE_SIZE=20, sorted by username
 - [ ] No CHECK constraint on `likes >= 0` at DB level (low priority, app logic prevents it)
 - [ ] `read :following_feed` — nil actor returns empty list (not a bug)
 - [ ] No search for users or tweets
 - [x] Tweet creation, update, delete, comment tests (13 tests)
 - [ ] Missing test coverage: auth flows
-- [ ] No pagination on user list (`/users`)
 
 ## Notes
 
